@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# This will compile and install the html documentation.  Sphinx is required.
+# To obtain sphinx:  conda --yes -c conda-forge sphinx
+
+make html
+cp -rf _build/html/* ../html
