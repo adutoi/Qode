@@ -1,0 +1,3 @@
+in this directory there a are two versions of directory.
+amp_eqs.py is the one actually works and imported to baker_campbell_hausdorff.py
+amp_eqs_newmodified.py don't works but please keep that, once something goes wrong, we can use this as a useful reference. 

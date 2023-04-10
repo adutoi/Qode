@@ -1,0 +1,6 @@
+1. ONLY s orbital is supported in this Hartree-Fock code.
+2. Input_list generation is not checked. How many S or P orbitals in a SP pair is unknown.
+3. Code efficiency is really low.
+4. This code applies to systems consist of H or He atoms and whatever multiplet or charge states.
+It fits q-chem outputs in regards of all kinds of H and/or He.
+5. MP2 and CC will be built in here also.

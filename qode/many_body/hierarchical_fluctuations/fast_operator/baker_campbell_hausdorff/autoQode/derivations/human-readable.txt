@@ -1,0 +1,63 @@
+#    (C) Copyright 2018 Anthony D. Dutoi
+# 
+#    This file is part of Qode.
+# 
+#    Qode is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+# 
+#    Qode is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+# 
+#    You should have received a copy of the GNU General Public License
+#    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
+#
+                                  .                                        .                        .                      .                                 .
+
+
+Fo(j,i)                           Ex(f,n)                                  X(j,)(i,)                T(n,)(f,)              n j i                             f
+Fv(a,b)                           Ex(f,n)                                  X(b,)(a,)                T(n,)(f,)              n                                 f b a
+Dx(a,i)                           Ex(f,n)                                  X(a,)(i,)                T(n,)(f,)              n   i                             f   a
+
+Ex(c,k),Fo(j,i)                   Ex(f,n)                                  X(k,j)(c,i)              T(n,)(f,)              n k j<k i                         f c
+Ex(c,k),Fv(a,b)                   Ex(f,n)                                  X(k,b)(c,a)              T(n,)(f,)              n k                               f c b a<c
+Ex(c,k),Dx(a,i)                   Ex(f,n)                                  X(k,a)(c,i)              T(n,)(f,)              n k     i                         f c   a
+
+Fo(l,k),Fo(j,i)                   Ex(f,n)                                  X(l,j)(k,i)              T(n,)(f,)              n l k j<l i<k                     f 
+Fo(l,k),Dx(a,i)                   Ex(f,n)                                  X(l,a)(k,i)              T(n,)(f,)              n l k     i<k                     f a
+
+Fv(c,d),Fv(a,b)                   Ex(f,n)                                  X(d,b)(c,a)              T(n,)(f,)              n                                 f d c b<d a<c
+Fv(c,d),Dx(a,i)                   Ex(f,n)                                  X(d,a)(c,i)              T(n,)(f,)              n i                               f d c     a<d
+
+Dx(b,j),Dx(a,i)                   Ex(f,n)                                  X(b,a)(j,i)              T(n,)(f,)              n j i<j                           f b a<b
+
+Ex(e,m),Ex(c,k),Dx(a,i)           Ex(f,n)                                  X(m,k,a)(e,c,i)          T(n,)(f,)              n m k<m i                         f e c<e a
+
+Ex(e,m),Fo(l,k),Fo(j,i)           Ex(f,n)                                  X(m,l,j)(e,k,i)          T(n,)(f,)              n m l<m k j<l i<k                 f e
+Ex(e,m),Fo(l,k),Dx(a,i)           Ex(f,n)                                  X(m,l,a)(e,k,i)          T(n,)(f,)              n m l<m k     i<k                 f e a
+
+Ex(e,m),Fv(c,d),Fv(a,b)           Ex(f,n)                                  X(m,d,b)(e,c,a)          T(n,)(f,)              n m                               f e d c<e b<d a<c
+Ex(e,m),Fv(c,d),Dx(a,i)           Ex(f,n)                                  X(m,d,a)(e,c,i)          T(n,)(f,)              n m i                             f e d c<e     a<d
+
+
+
+Fo(j,i)                           Ex(g,o),Ex(f,n)                          X(j,)(i,)                T(o,n)(g,f)            o n<o j i                         g f<g 
+Fv(a,b)                           Ex(g,o),Ex(f,n)                          X(b,)(a,)                T(o,n)(g,f)            o n<o                             g f<g b a
+Dx(a,i)                           Ex(g,o),Ex(f,n)                          X(a,)(i,)                T(o,n)(g,f)            o n<o   i                         g f<g   a
+
+Ex(c,k),Dx(a,i)                   Ex(g,o),Ex(f,n)                          X(k,a)(c,i)              T(o,n)(g,f)            o n<o k i                         g f<g c a
+
+Fo(l,k),Fo(j,i)                   Ex(g,o),Ex(f,n)                          X(l,j)(k,i)              T(o,n)(g,f)            o n<o l k j<l i<k                 g f<g 
+Fo(l,k),Dx(a,i)                   Ex(g,o),Ex(f,n)                          X(l,a)(k,i)              T(o,n)(g,f)            o n<o l k     i<k                 g f<g a
+
+Fv(c,d),Fv(a,b)                   Ex(g,o),Ex(f,n)                          X(d,b)(c,a)              T(o,n)(g,f)            o n<o                             g f<g d c b<d a<c
+Fv(c,d),Dx(a,i)                   Ex(g,o),Ex(f,n)                          X(d,a)(c,i)              T(o,n)(g,f)            o n<o i                           g f<g d c     a<d
+
+Dx(b,j),Dx(a,i)                   Ex(g,o),Ex(f,n)                          X(b,a)(j,i)              T(o,n)(g,f)            o n<o j i<j                       g f<g b a<b
+
+Ex(e,m),Fo(l,k),Dx(a,i)           Ex(g,o),Ex(f,n)                          X(m,l,a)(e,k,i)          T(o,n)(g,f)            o n<o m l<m k i<k                 g f<g e a
+
+Ex(e,m),Fv(c,d),Dx(a,i)           Ex(g,o),Ex(f,n)                          X(m,d,a)(e,c,i)          T(o,n)(g,f)            o n<o m i                         g f<g e d c<e a<d

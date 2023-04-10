@@ -1,0 +1,8 @@
+$molecule
+0 2
+H   0.0   0.0   0.0
+$end
+$rem
+exchange      HF
+basis         cc-pvdz
+$end

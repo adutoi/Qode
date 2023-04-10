@@ -1,0 +1,10 @@
+$molecule
+0 1
+h   0.0   0.0   0.0
+h   0.0   0.0   1.0
+$end
+
+$rem
+exchange      hf
+basis         6-31g
+$end

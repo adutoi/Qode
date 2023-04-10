@@ -1,0 +1,10 @@
+$molecule
+0 1
+Li 0.0  0.0  0.0
+Li 0.0  0.0  4.0095
+$end
+$rem
+exchange  hf
+basis     sto-test
+$end
+

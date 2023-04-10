@@ -1,0 +1,12 @@
+$molecule
+0 1 
+Be   0.0   0.0   0.0
+Be   0.0   0.0   3.075
+$end
+
+$rem
+exchange      HF
+basis         sto-test
+correlation   mp2
+$end
+

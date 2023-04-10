@@ -1,0 +1,118 @@
+Pre-SCF process for electrons
+INPUT FILE NAME: he2.in
+Charge: 0 	 Multiplicity: 1
+Exchange: hf 
+Basis: 6-31g 
+Correlation: None
+[0.0, 0.0, 0.0, 38.421634, 0.023766]
+[0.0, 0.0, 0.0, 5.77803, 0.154679]
+[0.0, 0.0, 0.0, 1.241774, 0.46963]
+[0.0, 0.0, 0.0, 0.297964, 1.0]
+[0.0, 0.0, 7.0, 38.421634, 0.023766]
+[0.0, 0.0, 7.0, 5.77803, 0.154679]
+[0.0, 0.0, 7.0, 1.241774, 0.46963]
+[0.0, 0.0, 7.0, 0.297964, 1.0]
+# of gaussians in each orbital:
+[3, 1, 3, 1]
+Orbital Types:
+['S', 'S', 'S', 'S']
+Input Symbols:
+['He', 'He']
+Number of electrons:
+4
+nuclei list and charge:
+[[0.0, 0.0, 0.0], [0.0, 0.0, 7.0]]
+[2, 2]
+a e-: 2 b e-: 2
+guess:
+-6.325221e-01   -6.325640e-01   0.000000e+00   0.000000e+00   
+-6.325577e-01   6.325285e-01   0.000000e+00   0.000000e+00   
+-3.160590e-01   -3.160462e-01   0.000000e+00   0.000000e+00   
+-3.160589e-01   3.160463e-01   0.000000e+00   0.000000e+00   
+0.000000e+00   0.000000e+00   -6.325221e-01   -6.325640e-01   
+0.000000e+00   0.000000e+00   -6.325577e-01   6.325285e-01   
+0.000000e+00   0.000000e+00   -3.160590e-01   -3.160462e-01   
+0.000000e+00   0.000000e+00   -3.160589e-01   3.160463e-01   
+occa [0, 1] occb [4, 5]
+fock.occ [0, 1, 4, 5]
+Cycle 1
+conv: vec = 0 energy = 3
+Cycle 2
+conv: vec = 0 energy = 2
+Cycle 3
+conv: vec = 0 energy = 1
+Cycle 4
+conv: vec = 0 energy = 0
+Cycle 5
+conv: vec = 0 energy = 0
+Cycle 6
+conv: vec = 0 energy = 0
+Cycle 7
+conv: vec = 0 energy = 0
+Cycle 8
+conv: vec = 0 energy = 0
+Cycle 9
+conv: vec = 0 energy = 0
+Cycle 10
+conv: vec = 0 energy = 0
+Cycle 11
+conv: vec = 0 energy = 0
+Cycle 12
+conv: vec = 0 energy = 0
+Cycle 13
+conv: vec = 0 energy = 0
+Cycle 14
+conv: vec = 0 energy = 0
+Cycle 15
+conv: vec = 0 energy = 0
+Cycle 16
+conv: vec = 0 energy = 0
+Cycle 17
+conv: vec = 0 energy = 0
+Cycle 18
+conv: vec = 0 energy = 0
+Cycle 19
+conv: vec = 0 energy = 0
+Cycle 20
+conv: vec = 0 energy = 0
+Cycle 21
+conv: vec = 0 energy = 0
+Cycle 22
+conv: vec = 0 energy = 0
+Cycle 23
+conv: vec = 0 energy = 0
+Cycle 24
+conv: vec = 0 energy = 0
+Cycle 25
+conv: vec = 0 energy = 0
+Cycle 26
+conv: vec = 0 energy = 0
+Cycle 27
+conv: vec = 1 energy = 0
+Cycle 28
+conv: vec = 2 energy = 0
+Cycle 29
+conv: vec = 3 energy = 0
+Cycle 30
+conv: vec = 4 energy = 0
+Cycle 31
+conv: vec = 4 energy = 1
+Cycle 32
+conv: vec = 4 energy = 2
+Cycle 33
+conv: vec = 4 energy = 3
+Cycle 34
+conv: vec = 4 energy = 4
+U
+-6.757759e-01   6.758132e-01   9.039215e-02   -2.800584e-01   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   
+-6.758138e-01   -6.757753e-01   2.800576e-01   9.039470e-02   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   
+-2.080897e-01   2.080916e-01   -2.935874e-01   9.095070e-01   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   
+-2.080897e-01   -2.080916e-01   -9.095073e-01   -2.935866e-01   0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   
+0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   -6.757647e-01   6.758021e-01   2.140452e-17   2.943360e-01   
+0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   -6.758026e-01   -6.757641e-01   -2.943360e-01   -2.653426e-06   
+0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   -2.081261e-01   2.081279e-01   3.162516e-05   -9.557020e-01   
+0.000000e+00   0.000000e+00   0.000000e+00   0.000000e+00   -2.081260e-01   -2.081279e-01   9.557020e-01   3.080796e-05   
+HF = -5.71032084807
+KE = 5.71073273222
+NAE = -14.0796576152
+ERE = 2.35621705723

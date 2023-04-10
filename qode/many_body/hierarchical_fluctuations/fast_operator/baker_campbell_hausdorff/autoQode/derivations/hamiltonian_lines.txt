@@ -1,0 +1,129 @@
+#    (C) Copyright 2018 Anthony D. Dutoi
+# 
+#    This file is part of Qode.
+# 
+#    Qode is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+# 
+#    Qode is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+# 
+#    You should have received a copy of the GNU General Public License
+#    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
+#
+IDX_ij = Indices("i j", bound="No")
+i,j = IDX_ij()
+expression = Sum( IDX_ij         )(mult( Coeff('h',(j,),(i,)), CrtOcc(i), DstOcc(j) ))
+
+IDX_j = Indices("i", bound="No")
+IDX_a = Indices("a", bound="Nv")
+j, = IDX_j()
+a, = IDX_a()
+expression = Sum( IDX_j  , IDX_a )(mult( Coeff('h',(j,),(a,)), CrtVrt(a), DstOcc(j) ))
+
+IDX_i = Indices("i", bound="No")
+IDX_b = Indices("a", bound="Nv")
+i, = IDX_i()
+b, = IDX_b()
+expression = Sum( IDX_i  , IDX_b )(mult( Coeff('h',(b,),(i,)), CrtOcc(i), DstVrt(b) ))
+
+IDX_ab = Indices("a b", bound="Nv")
+a,b = IDX_ab()
+expression = Sum( IDX_ab         )(mult( Coeff('h',(b,),(a,)), CrtVrt(a), DstVrt(b) ))
+
+IDX_ijkl = Indices("i j k l", bound="No")
+i,j,k,l = IDX_ijkl()
+expression = Sum( IDX_ijkl        )(mult( Coeff('V',(l,k),(j,i)), CrtOcc(i), CrtOcc(j), DstOcc(k), DstOcc(l) ))
+
+IDX_jkl = Indices("i j k", bound="No")
+IDX_a = Indices("a", bound="Nv")
+j,k,l = IDX_jkl()
+a, = IDX_a()
+expression = Sum( IDX_jkl , IDX_a )(mult( Coeff('V',(l,k),(j,a)), CrtVrt(a), CrtOcc(j), DstOcc(k), DstOcc(l) ))
+
+IDX_ikl = Indices("i j k", bound="No")
+IDX_b = Indices("a", bound="Nv")
+i,k,l = IDX_ikl()
+b, = IDX_b()
+expression = Sum( IDX_ikl , IDX_b )(mult( Coeff('V',(l,k),(b,i)), CrtOcc(i), CrtVrt(b), DstOcc(k), DstOcc(l) ))
+
+IDX_kl = Indices("i j", bound="No")
+IDX_ab = Indices("a b", bound="Nv")
+k,l = IDX_kl()
+a,b = IDX_ab()
+expression = Sum( IDX_kl , IDX_ab )(mult( Coeff('V',(l,k),(b,a)), CrtVrt(a), CrtVrt(b), DstOcc(k), DstOcc(l) ))
+
+IDX_ijl = Indices("i j k", bound="No")
+IDX_c = Indices("a", bound="Nv")
+i,j,l = IDX_ijl()
+c, = IDX_c()
+expression = Sum( IDX_ijl , IDX_c )(mult( Coeff('V',(l,c),(j,i)), CrtOcc(i), CrtOcc(j), DstVrt(c), DstOcc(l) ))
+
+IDX_jl = Indices("i j", bound="No")
+IDX_ac = Indices("a b", bound="Nv")
+j,l = IDX_jl()
+a,c = IDX_ac()
+expression = Sum( IDX_jl , IDX_ac )(mult( Coeff('V',(l,c),(j,a)), CrtVrt(a), CrtOcc(j), DstVrt(c), DstOcc(l) ))
+
+IDX_il = Indices("i j", bound="No")
+IDX_bc = Indices("a b", bound="Nv")
+i,l = IDX_il()
+b,c = IDX_bc()
+expression = Sum( IDX_il , IDX_bc )(mult( Coeff('V',(l,c),(b,i)), CrtOcc(i), CrtVrt(b), DstVrt(c), DstOcc(l) ))
+
+IDX_l = Indices("i", bound="No")
+IDX_abc = Indices("a b c", bound="Nv")
+l, = IDX_l()
+a,b,c = IDX_abc()
+expression = Sum( IDX_l , IDX_abc )(mult( Coeff('V',(l,c),(b,a)), CrtVrt(a), CrtVrt(b), DstVrt(c), DstOcc(l) ))
+
+IDX_ijk = Indices("i j k", bound="No")
+IDX_d = Indices("a", bound="Nv")
+i,j,k = IDX_ijk()
+d, = IDX_d()
+expression = Sum( IDX_ijk , IDX_d )(mult( Coeff('V',(d,k),(j,i)), CrtOcc(i), CrtOcc(j), DstOcc(k), DstVrt(d) ))
+
+IDX_jk = Indices("i j", bound="No")
+IDX_ad = Indices("a b", bound="Nv")
+j,k = IDX_jk()
+a,d = IDX_ad()
+expression = Sum( IDX_jk , IDX_ad )(mult( Coeff('V',(d,k),(j,a)), CrtVrt(a), CrtOcc(j), DstOcc(k), DstVrt(d) ))
+
+IDX_ik = Indices("i j", bound="No")
+IDX_bd = Indices("a b", bound="Nv")
+i,k = IDX_ik()
+b,d = IDX_bd()
+expression = Sum( IDX_ik , IDX_bd )(mult( Coeff('V',(d,k),(b,i)), CrtOcc(i), CrtVrt(b), DstOcc(k), DstVrt(d) ))
+
+IDX_k = Indices("i", bound="No")
+IDX_abd = Indices("a b c", bound="Nv")
+k, = IDX_k()
+a,b,d = IDX_abd()
+expression = Sum( IDX_k , IDX_abd )(mult( Coeff('V',(d,k),(b,a)), CrtVrt(a), CrtVrt(b), DstOcc(k), DstVrt(d) ))
+
+IDX_ij = Indices("i j", bound="No")
+IDX_cd = Indices("a b", bound="Nv")
+i,j = IDX_ij()
+c,d = IDX_cd()
+expression = Sum( IDX_ij , IDX_cd )(mult( Coeff('V',(d,c),(j,i)), CrtOcc(i), CrtOcc(j), DstVrt(c), DstVrt(d) ))
+
+IDX_j = Indices("i", bound="No")
+IDX_acd = Indices("a b c", bound="Nv")
+j, = IDX_j()
+a,c,d = IDX_acd()
+expression = Sum( IDX_j , IDX_acd )(mult( Coeff('V',(d,c),(j,a)), CrtVrt(a), CrtOcc(j), DstVrt(c), DstVrt(d) ))
+
+IDX_i = Indices("i", bound="No")
+IDX_bcd = Indices("a b c", bound="Nv")
+i, = IDX_i()
+b,c,d = IDX_bcd()
+expression = Sum( IDX_i , IDX_bcd )(mult( Coeff('V',(d,c),(b,i)), CrtOcc(i), CrtVrt(b), DstVrt(c), DstVrt(d) ))
+
+IDX_abcd = Indices("a b c d", bound="Nv")
+a,b,c,d = IDX_abcd()
+expression = Sum( IDX_abcd        )(mult( Coeff('V',(d,c),(b,a)), CrtVrt(a), CrtVrt(b), DstVrt(c), DstVrt(d) ))
+
