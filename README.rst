@@ -56,7 +56,14 @@ dependencies
 ^^^^^^^^^^^^
 
 *Numpy* and you might need to install an integrals engine unless you want to read
-all your integrals from disk (there are hooks for running in a *Psi4* conda environment).
+all your integrals from disk.
+
+There are hooks for using *Psi4* as an integrals engine in a conda environment.
+conda create --name Psi4 psi4 -c psi4;
+conda activate Psi4
+
+Some C code is dynamically compiled to shared library files and linked against,
+so you will need a C compile available for this.  gcc is a good choice.
 
 So far this has only been tested for python>=3.7 on *nix systems (specifically
 Linux/Mac).
