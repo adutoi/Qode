@@ -19,6 +19,9 @@
 # WARNING:  right now, this code expects the fragments to know both the basis and the number of orbitals for that fragment
 # in that basis, which is a potential place to not have synchronization.
 
+# 8.Jun.2023:  changed name semiMO to fragMO.  Might have broken some calling code (can be fixed with 4-char substitution semi->frag)
+
+
 
 import numpy
 from ...util.dynamic_array import dynamic_array, cached, mask
@@ -182,7 +185,7 @@ class AO_integrals(object):
         sort_keys = key_sorter(fragments)
         if rule_wrappers is None:  rule_wrappers = []
         frag_calcs = dynamic_array([cached, AO_integrals._compute_rule(fragments, sort_keys, integrals_engine)], ranges=[None])	# definitely cache because so expensive and called repeatedly by arrays below ... no rule_wrappers because elements different in structure than those below
-        self.S   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("S", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids])		# caching not important because just block finder (and each grabbed only once to do semiMO transform)
+        self.S   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("S", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids])		# caching not important because just block finder (and each grabbed only once to do fragMO transform)
         self.T   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("T", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids])
         self.U   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("U", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids,frag_ids])
         self.V   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("V", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
@@ -235,7 +238,7 @@ class AO_integrals(object):
 
 
 
-class semiMO_integrals(object):		# actually more general than MOs ... any (fragment-local) transformations you like, including right not the same as left ... would like to let either right or left or individual transforms be 1, but then checking is more involved, so let sleeping dogs lie for now
+class fragMO_integrals(object):		# actually more general than MOs ... any (fragment-local) transformations you like, including right not the same as left ... would like to let either right or left or individual transforms be 1, but then checking is more involved, so let sleeping dogs lie for now
     def __init__(self, AOints, right=True, left=True, cache=False, rule_wrappers=None):
         self.fragments = AOints.fragments
         frag_ids = keys(self.fragments)
@@ -244,10 +247,10 @@ class semiMO_integrals(object):		# actually more general than MOs ... any (fragm
         elif right is True:  right = left
         cache = [] if cache else [cached]
         if rule_wrappers is None:  rule_wrappers = []
-        self.S = dynamic_array(cache + rule_wrappers + [semiMO_integrals._transform2_rule(    AOints.S, left, right)], ranges=[frag_ids,frag_ids])
-        self.T = dynamic_array(cache + rule_wrappers + [semiMO_integrals._transform2_rule(    AOints.T, left, right)], ranges=[frag_ids,frag_ids])
-        self.U = dynamic_array(cache + rule_wrappers + [semiMO_integrals._transformLast2_rule(AOints.U, left, right)], ranges=[frag_ids,frag_ids,frag_ids])
-        self.V = dynamic_array(cache + rule_wrappers + [semiMO_integrals._transform4_rule(    AOints.V, left, right)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
+        self.S = dynamic_array(cache + rule_wrappers + [fragMO_integrals._transform2_rule(    AOints.S, left, right)], ranges=[frag_ids,frag_ids])
+        self.T = dynamic_array(cache + rule_wrappers + [fragMO_integrals._transform2_rule(    AOints.T, left, right)], ranges=[frag_ids,frag_ids])
+        self.U = dynamic_array(cache + rule_wrappers + [fragMO_integrals._transformLast2_rule(AOints.U, left, right)], ranges=[frag_ids,frag_ids,frag_ids])
+        self.V = dynamic_array(cache + rule_wrappers + [fragMO_integrals._transform4_rule(    AOints.V, left, right)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
     @staticmethod
     def _transform2_rule(H, left, right):    # H is overlap or kinetic
         def trans(m1,m2):
@@ -289,6 +292,9 @@ class spin_orb_integrals(object):
         self.U = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin2_rule(    spatial_ints.U, arrange)], ranges=[frag_ids,frag_ids,frag_ids])
         if antisymmetrize:  self.V = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spinAnti4_rule(spatial_ints.V, arrange)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
         else:               self.V = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin4_rule(    spatial_ints.V, arrange)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
+        if hasattr(spatial_ints, "V_half"):
+            if antisymmetrize:  self.V_half = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spinAnti4half_rule(spatial_ints.V_half, arrange)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
+            else:               self.V_half = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin4_rule(    spatial_ints.V_half, arrange)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
     @staticmethod
     def _spin2_rule(H, arrange):    # H is S, T, or U
         rearrangement = spatial_to_spin.one_electron_blocked
@@ -312,6 +318,17 @@ class spin_orb_integrals(object):
             tmp2 = rearrangement(V[m1,m2,m4,m3])
             return (1/4.) * (tmp1 - numpy.swapaxes(tmp2,2,3))			# premature optimization is the root of all evil ... this will possibly call non-cached result from next layer twice ... must be possible to fix at this layer
         return spinAnti4
+    @staticmethod
+    def _spinAnti4half_rule(V, arrange):
+        rearrangement = spatial_to_spin.two_electron_blocked
+        if arrange=="alternating":  rearrangement = spatial_to_spin.two_electron_alternating
+        def spinAnti4half(m1,m2,m3,m4):
+            tmp1 = rearrangement(V[m1,m2,m3,m4])
+            tmp2 = rearrangement(V[m1,m2,m4,m3])
+            tmp3 = rearrangement(V[m2,m1,m3,m4])
+            tmp4 = rearrangement(V[m2,m1,m4,m3])
+            return (1/4.) * ((tmp1-numpy.swapaxes(tmp2,2,3)) - numpy.swapaxes(tmp3-numpy.swapaxes(tmp4,2,3),0,1))			# premature optimization is the root of all evil ... this will possibly call non-cached result from next layer twice ... must be possible to fix at this layer
+        return spinAnti4half
 
 
 
@@ -328,6 +345,7 @@ class bra_transformed(object):
         self.U  = dynamic_array(  cache + rule_wrappers + [bra_transformed._transformU_rule( transform, frag_integrals.U)], ranges=[frag_ids,frag_ids,frag_ids])
         V_h     = dynamic_array(halftrans_rule_wrappers + [bra_transformed._transformV2_rule(transform, frag_integrals.V)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])    # half transformed ... must cache or else very inefficient?
         self.V  = dynamic_array(  cache + rule_wrappers + [bra_transformed._transformV1_rule(transform, V_h             )], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
+        self.V_half = dynamic_array(    cache + rule_wrappers + [bra_transformed._halfV_rule(transform, V_h             )], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
     @staticmethod
     def _transformH_rule(transform, H):		# H can be S or T
         frag_ids = transform.ranges[1]	# The transform might not touch every block of H
@@ -361,6 +379,11 @@ class bra_transformed(object):
             V_ = numpy.zeros((d1,d2,d3,d4))
             for mm in frag_ids:  V_ += numpy.tensordot(transform[m1,mm], V_h[mm,m2,m3,m4], axes=([1],[1]))	# undoes above permutation
             return V_
+        return transform_act
+    @staticmethod
+    def _halfV_rule(transform, V_h):
+        def transform_act(m1,m2,m3,m4):
+            return numpy.swapaxes(V_h[m1,m2,m3,m4], 0, 1)
         return transform_act
 
 
