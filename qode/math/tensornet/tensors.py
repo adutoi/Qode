@@ -16,7 +16,7 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from copy      import copy, deepcopy
+from copy      import copy
 from textwrap  import indent
 from base      import tensor_base, evaluate, increment, raw, scalar, backend, scalar_value, shape
 from heuristic import heuristic    # how to order contraction executions in a network
@@ -92,16 +92,14 @@ class tensor_sum(summable_tensor):
 
 
 # The tensornet type for the primitive tensors that the user sees and uses and builds networks from.
-# It should mostly act like the raw tensor type of the chosen backend (ie, forwarding calls), but with
-# some extra tensornet-specific functionality that is uniform across backends.  In order to accomplish
-# this, the tensor importantly knows its backend, via a provided module (implemented by the user if not
+# The tensor importantly knows its backend, via a provided module (implemented by the user if not
 # already provided for that backend type).  
 class primitive_tensor(summable_tensor):
-    def __init__(self, raw_tensor, backend, _scalar=1):
+    def __init__(self, raw_tensor, backend):
         # long member names to stay out of way of __getattr__ (and never seen by user)
         self.tensornet_raw_tensor = raw_tensor             # only ever accessed by wrapper below
         self.tensornet_backend    = backend
-        self.tensornet_scalar     = _scalar                # here so that we can define *= without changing original data
+        self.tensornet_scalar     = 1                      # here so that we can define *= without changing original data
         self.tensornet_shape      = backend.shape(raw_tensor)
     def tensornet_scalar_value(self):                      # only ever accessed by wrapper below
         return scalar(self) * backend(self).scalar_value(raw(self))
@@ -109,10 +107,7 @@ class primitive_tensor(summable_tensor):
         result += scalar(self) * raw(self)       # do not make a copy just to use as an increment, but ...
         return
     def tensornet_evaluate(self):
-        return primitive_tensor(deepcopy(raw(self)), backend(self), _scalar=scalar(self))    # ... this might get modified and so should be independent
-    #def __getattr__(self, name):
-    #    return getattr(raw(self), name)    # forward all other calls for user convenience
-    # calls to __XXX__ functions are not passed through by __getattr__ ... for good reason (would return wrong types)
+        return primitive_tensor(scalar(self) * raw(self), backend(self))    # ... this might get modified and so should be independent
     def __str__(self):
         return "tensornet.primitive_tensor(\n{}\n)".format(indent(str(raw(self)), "    "))
     # __iadd__ and __isub__ would be confusing since __add__ and __sub__ make a tensor_sum (*)
