@@ -29,8 +29,10 @@ class tensor(object):
         return self.scalar
     def __str__(self):
         return str(self.scalar) + " * " + self.name + str(self.shape)
-
-
+    def __iadd__(self, other):
+        self.name = "[" + str(self) + " + " + str(other) + "]"
+        self.scalar = 1
+        return self
 
 def contract(*tensor_factors):
     name, scalar, contractions, free_indices = "", 1, {}, {}

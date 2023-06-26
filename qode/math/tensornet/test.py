@@ -27,8 +27,8 @@ tensor = primitive_tensor_wrapper(dummy_backend)
 
 
 A = tensor(dummy_tensor.tensor(1,"A",(5,4)))
-#AA = contract((A,0,1),(A,2,3)) + contract((A,0,3),(A,2,1))
-AA = contract((A,0,1),(A,2,3))
+AA = contract((A,0,1),(A,2,3)) - contract((A,0,3),(A,2,1))
+#AA = contract((A,0,1),(A,2,3))
 
 P = tensor(dummy_tensor.tensor(1,"P",(5,5)))
 Q = tensor(dummy_tensor.tensor(1,"Q",(4,4)))

@@ -53,8 +53,6 @@ def shape(tensor):
 
 # expected to have a backend and a shape (and a scalar if not a sum), everything else is specific to single class
 class tensor_base(object):
-    def __add__(self, other):
-        return tensor_sum([self, other])
     # __mul__, __rmul__, __neg__, and __sub__ use __imul__ from child
     # multiplication here is always by a scalar
     def __itruediv__(self, x):
@@ -70,5 +68,6 @@ class tensor_base(object):
         return self * x
     def __neg__(self):
         return self * -1
+    # needs __add__ but cannot define here because no knowledge of tensor_sum
     def __sub__(self, other):
         return self + (-other)

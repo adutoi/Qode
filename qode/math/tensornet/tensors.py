@@ -32,9 +32,14 @@ def primitive_tensor_wrapper(backend):
         return primitive_tensor(raw_tensor, backend)
     return wrapper
 
+class summable_tensor(tensor_base):
+    def __add__(self, other):
+        return tensor_sum([self, other])
+
+
 # in an informational sense, this is the most basic tensor, since all it does is store a list
 # of tensor_networks and primitive_tensors.
-class tensor_sum(tensor_base):
+class tensor_sum(summable_tensor):
     def __init__(self, tensor_terms=None):
         if tensor_terms==None:  tensor_terms = []    # for instantiation of empty sum as accumulator
         self.tensornet_backend = None
@@ -91,7 +96,7 @@ class tensor_sum(tensor_base):
 # some extra tensornet-specific functionality that is uniform across backends.  In order to accomplish
 # this, the tensor importantly knows its backend, via a provided module (implemented by the user if not
 # already provided for that backend type).  
-class primitive_tensor(tensor_base):
+class primitive_tensor(summable_tensor):
     def __init__(self, raw_tensor, backend, _scalar=1):
         # long member names to stay out of way of __getattr__ (and never seen by user)
         self.tensornet_raw_tensor = raw_tensor             # only ever accessed by wrapper below
@@ -119,7 +124,7 @@ class primitive_tensor(tensor_base):
 
 
 
-class tensor_network(tensor_base):
+class tensor_network(summable_tensor):
     def __init__(self, scalar, contractions, free_indices, backend):
         self.tensornet_scalar = scalar
         self.contractions = contractions
