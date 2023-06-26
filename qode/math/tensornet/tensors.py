@@ -163,8 +163,9 @@ class tensor_network(tensor_base):
             return prim_list_groups
         contraction_groups  = _group_by_tensors(contractions, allow_singles=True)
         index_reduct_groups = _group_by_tensors(free_indices)
+        shapes = {tens:shape(by_id[tens]) for tens in by_id}
         #
-        do_scalar_mult, do_reduction, target = heuristic(scalar(self), contraction_groups, index_reduct_groups, by_id)
+        do_scalar_mult, do_reduction, target = heuristic(scalar(self), contraction_groups, index_reduct_groups, shapes)
         #
         if do_scalar_mult or do_reduction:
             if do_scalar_mult:
