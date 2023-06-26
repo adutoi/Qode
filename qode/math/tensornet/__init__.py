@@ -17,8 +17,8 @@
 #
 
 from contract import contract
-from primitive_tensor import primitive_tensor_wrapper
+from tensor_network import primitive_tensor_wrapper, tensor_sum, evaluate, increment
 from numpy_backend import numpy_backend
 
-def evaluate(tensor):
-    return tensor.tensornet_evaluate()
+
+

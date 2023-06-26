@@ -16,41 +16,43 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from primitive_tensor import thin_wrapper
-from tensor_network   import tensor_network, tensor_network_sum
+from copy import copy
+from tensors import tensor_network, tensor_sum, shape, scalar, backend
 
 
 
 # This handles the case where the tensor_factors are single terms (not sums) for contract() below
 def _contract(*tensor_factors):
     # collect arguments
-    scalar, contractions, new_contractions, free_indices, free_indices_as_dict, backend = 1, [], {}, [], {}, None
+    new_scalar, contractions, new_contractions, free_indices, free_indices_as_dict, new_backend = 1, [], {}, [], {}, None
     for i,factor in enumerate(tensor_factors):
         try:
             tens, *indices = factor
         except:
             try:
-                scalar *= factor
+                new_scalar *= factor
             except:
                 raise TypeError("argument {} to contract._contract is malformed".format(i))
         else:
             try:
-                shape = tens.tensornet_shape
+                new_shape = shape(tens)
             except:
                 raise  TypeError("argument {} to contract._contract does not reference a tensornet tensor".format(i))
-            if backend is None:
-                backend = tens.tensornet_backend
-            if tens.tensornet_backend is not backend:
+            if new_backend is None:
+                new_backend = backend(tens)
+            if backend(tens) is not new_backend:
                 raise ValueError("argument {} to contract._contract has differing backend than those prior".format(i))
-            if len(indices)!=len(shape):
+            if len(indices)!=len(new_shape):
                 raise ValueError("argument {} to contract._contract has wrong number of indices specified".format(i))
             try:
                 c = tens.contractions
             except AttributeError:
-                tens = thin_wrapper(tens)      # must be a primitive tensor, so wrap and skip other stuff
+                tens = copy(tens)               # must be a primitive tensor, so make distinct object (see tensor_network) and skip rest 
+                new_scalar       *= scalar(tens)    # ... and accumulate scalar factors
+                tens /= new_scalar                  # will not make a difference because ignored, but more explicit
             else:
-                contractions += c              # inherit contractions from input tensors ...
-                scalar       *= tens.scalar    # ... and accumulate scalar factors
+                contractions += c               # inherit contractions from input tensors ...
+                new_scalar       *= scalar(tens)    # ... and accumulate scalar factors
             for pos,val in enumerate(indices):
                 collector = free_indices_as_dict if isinstance(val,int) else new_contractions
                 try:
@@ -65,8 +67,8 @@ def _contract(*tensor_factors):
         prim_list = []
         for tens,pos in index_list:
             if axis_length is None:
-                axis_length = tens.shape[pos]     # at this point, it is either a wrapped ...
-            elif axis_length!=tens.shape[pos]:    # ... primitive_tensor or a tensor_network
+                axis_length = shape(tens)[pos]     # at this point, it is either a wrapped ...
+            elif axis_length!=shape(tens)[pos]:    # ... primitive_tensor or a tensor_network
                 raise ValueError("incompatible axis lengths")
             try:
                 prim_list_other = tens.free_indices[pos]
@@ -91,7 +93,7 @@ def _contract(*tensor_factors):
             contractions += [_resolve_primitive_indices(contraction)]
         except ValueError:
             raise ValueError("incompatible lengths for summation over \"{}\" in contract._contract".format(dummy))
-    return tensor_network(scalar, contractions, free_indices, backend)
+    return tensor_network(new_scalar, contractions, free_indices, new_backend)
 
 
 
@@ -119,4 +121,4 @@ def contract(*tensor_factors):
     if len(tensor_terms)==1:
         return tensor_terms[0]
     else:
-        return tensor_network_sum(tensor_terms)
+        return tensor_sum(tensor_terms)

@@ -19,7 +19,8 @@
 import dummy_tensor
 import dummy_backend
 from contract import contract
-from primitive_tensor import primitive_tensor_wrapper
+from tensors import primitive_tensor_wrapper
+from base import evaluate
 
 tensor = primitive_tensor_wrapper(dummy_backend)
 
@@ -44,5 +45,5 @@ QZ3 = contract((Q,0,"p"),(Z3,"p"))
 
 dot = contract(2, (AA,"p","q","r","s"), (PZ0,"p"), (QZ1,"q"), (PZ2,"r"), (QZ3,"s"))
 
-X = dot.tensornet_evaluate()
+X = evaluate(dot)
 print(X)
