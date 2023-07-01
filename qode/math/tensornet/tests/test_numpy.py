@@ -17,25 +17,21 @@
 #
 
 import numpy
-import numpy_backend
-from contract import contract
-from tensors import primitive_tensor_wrapper
-from base import evaluate, raw
-
-tensor = primitive_tensor_wrapper(numpy_backend)
+from qode.math.tensornet import np_tensor, contract, extract
 
 p,q,r,s,t,u = 'pqrstu'
+
 
 
 A = numpy.random.random((10, 10))
 B = numpy.random.random((10, 10))
 C = A @ B
 
-A_ = tensor(A)
-B_ = tensor(B)
+A_ = np_tensor(A)
+B_ = np_tensor(B)
 
 pdt = contract((A_,0,p), (B_,p,1))
-C_ = raw(evaluate(pdt))
+C_ = extract(pdt)
 
 norm  = numpy.linalg.norm(C)
 error = numpy.linalg.norm(C-C_)

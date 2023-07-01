@@ -20,41 +20,41 @@ from copy import copy
 
 
 
+def shape(tensor):
+    return tensor.tensornet_shape
 
 def evaluate(tensor):
     return tensor.tensornet_evaluate()
 
-def increment(result, tensor):
+def increment(result, tensor):    # for incrementing raw tensors of the same shape (implicitly evaluates)
     return tensor.tensornet_increment(result)
 
-def raw(tensor):   # user beware, does not return scalar
-    try:
-        raw_tensor = tensor.tensornet_raw_tensor
-    except AttributeError:
-        raise TypeError("can only return raw tensor from a tensornet primitive")
-    return raw_tensor
-
-def scalar(tensor):    # user beware, does not return raw
-    return tensor.tensornet_scalar
-
-def backend(tensor):
-    return tensor.tensornet_backend
+def extract(tensor):
+    return _raw(evaluate(tensor))
 
 def scalar_value(tensor):
-    try:
-        value = tensor.tensornet_scalar_value()
-    except AttributeError:
-        raise TypeError("can only attempt scalar evaluation of a tensornet primitive")
-    return value
+    if len(shape(tensor))>0:
+        raise RuntimeError("cannot take the scalar value of a tensornet tensor with >0 free indices")
+    return _backend(tensor).scalar_value(extract(tensor))
 
-def shape(tensor):
-    return tensor.tensornet_shape
+# the next three are not for end users of the package
+
+def _scalar(tensor):
+    return tensor.tensornet_scalar
+
+def _raw(tensor):
+    return tensor.tensornet_raw_tensor
+
+def _backend(tensor):
+    return tensor.tensornet_backend
+
 
 
 # expected to have a backend and a shape (and a scalar if not a sum), everything else is specific to single class
 class tensor_base(object):
-    # __mul__, __rmul__, __neg__, and __sub__ use __imul__ from child
-    # multiplication here is always by a scalar
+    def __setitem__(self, item):
+        raise RuntimeError("elements of tensornet tensors are not assignable")
+    # __mul__, __rmul__, __neg__, and __sub__ use __imul__ from child; multiplication here is always with a scalar
     def __itruediv__(self, x):
         self *= (1./x)
         return self
@@ -68,6 +68,6 @@ class tensor_base(object):
         return self * x
     def __neg__(self):
         return self * -1
-    # needs __add__ but cannot define here because no knowledge of tensor_sum
+    # the following needs __add__ but cannot define here because no knowledge of tensor_sum
     def __sub__(self, other):
         return self + (-other)

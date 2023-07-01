@@ -16,27 +16,22 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import dummy_tensor
-import dummy_backend
-from contract import contract
-from tensors import primitive_tensor_wrapper
-from base import evaluate
-
-tensor = primitive_tensor_wrapper(dummy_backend)
+from dummy_tensor        import tensor
+from qode.math.tensornet import dummy_tensor, contract, evaluate
 
 
 
-A = tensor(dummy_tensor.tensor(1,"A",(5,4)))
-AA = contract((A,0,1),(A,2,3)) - contract((A,0,3),(A,2,1))
+A = dummy_tensor(tensor(1,"A",(5,4)))
 #AA = contract((A,0,1),(A,2,3))
+AA = contract((A,0,1),(A,2,3)) - contract((A,0,3),(A,2,1))
 
-P = tensor(dummy_tensor.tensor(1,"P",(5,5)))
-Q = tensor(dummy_tensor.tensor(1,"Q",(4,4)))
+P = dummy_tensor(tensor(1,"P",(5,5)))
+Q = dummy_tensor(tensor(1,"Q",(4,4)))
 
-Z0 = tensor(dummy_tensor.tensor(1,"Z0",(5,)))
-Z1 = tensor(dummy_tensor.tensor(1,"Z1",(4,)))
-Z2 = tensor(dummy_tensor.tensor(1,"Z2",(5,)))
-Z3 = tensor(dummy_tensor.tensor(1,"Z3",(4,)))
+Z0 = dummy_tensor(tensor(1,"Z0",(5,)))
+Z1 = dummy_tensor(tensor(1,"Z1",(4,)))
+Z2 = dummy_tensor(tensor(1,"Z2",(5,)))
+Z3 = dummy_tensor(tensor(1,"Z3",(4,)))
 
 PZ0 = contract((P,0,"p"),(Z0,"p"))
 QZ1 = contract((Q,0,"p"),(Z1,"p"))

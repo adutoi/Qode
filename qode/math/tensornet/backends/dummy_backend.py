@@ -16,7 +16,7 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import dummy_tensor
+from . import dummy_tensor
 
 def scalar_value(tensor):
     return tensor.item()

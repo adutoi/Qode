@@ -17,7 +17,9 @@
 #
 
 from copy import copy
-from tensors import tensor_network, tensor_sum, shape, scalar, backend
+from .base           import shape, _scalar, _backend
+from .tensors        import tensor_sum
+from .tensor_network import tensor_network
 
 
 
@@ -39,20 +41,20 @@ def _contract(*tensor_factors):
             except:
                 raise  TypeError("argument {} to contract._contract does not reference a tensornet tensor".format(i))
             if new_backend is None:
-                new_backend = backend(tens)
-            if backend(tens) is not new_backend:
+                new_backend = _backend(tens)
+            if _backend(tens) is not new_backend:
                 raise ValueError("argument {} to contract._contract has differing backend than those prior".format(i))
             if len(indices)!=len(new_shape):
                 raise ValueError("argument {} to contract._contract has wrong number of indices specified".format(i))
             try:
                 c = tens.contractions
             except AttributeError:
-                tens = copy(tens)               # must be a primitive tensor, so make distinct object (see tensor_network) and skip rest 
-                new_scalar       *= scalar(tens)    # ... and accumulate scalar factors
-                tens /= new_scalar                  # will not make a difference because ignored, but more explicit
+                tens = copy(tens)              # must be a primitive tensor, so, make distinct object (for hashing), ...
+                new_scalar *= _scalar(tens)    # ... accumulate scalar factors, ...
+                tens /= new_scalar             # ... and renormalize copy
             else:
-                contractions += c               # inherit contractions from input tensors ...
-                new_scalar       *= scalar(tens)    # ... and accumulate scalar factors
+                contractions += c              # inherit contractions from input tensors ...
+                new_scalar *= _scalar(tens)    # ... and accumulate scalar factors
             for pos,val in enumerate(indices):
                 collector = free_indices_as_dict if isinstance(val,int) else new_contractions
                 try:
@@ -67,15 +69,15 @@ def _contract(*tensor_factors):
         prim_list = []
         for tens,pos in index_list:
             if axis_length is None:
-                axis_length = shape(tens)[pos]     # at this point, it is either a wrapped ...
-            elif axis_length!=shape(tens)[pos]:    # ... primitive_tensor or a tensor_network
+                axis_length = shape(tens)[pos]
+            elif axis_length!=shape(tens)[pos]:
                 raise ValueError("incompatible axis lengths")
             try:
                 prim_list_other = tens.free_indices[pos]
             except AttributeError:
-                prim_list += [(tens, pos)]      # must be a primitive tensor, so just copy over, ...
+                prim_list += [(tens, pos)]      # must be a primitive tensor, so just copy over, or ...
             else:
-                prim_list += prim_list_other    # ... or use free index specifications from input tensors
+                prim_list += prim_list_other    # ... else use free index specifications from input tensors
         return prim_list    # contains only references to primitive tensors
     # resolve free indices in terms of primitive tensors
     for i in range(len(free_indices_as_dict)):
@@ -97,7 +99,6 @@ def _contract(*tensor_factors):
 
 
 
-# Usage: new_tens_network = contract((tens1,"p",0), (tens2,"p",1), scalar, (tens3,"p","p",1), (tens4,2,3))
 # This function turns a contractions of sums into sums of contractions and passes the terms off to _contact() above
 # Implicit type checking is essentially delegated to _contract().
 def contract(*tensor_factors):

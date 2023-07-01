@@ -67,3 +67,6 @@ def contract(*tensor_factors):
     instructions += "->"
     instructions += "".join(free_indices)
     return scalar * numpy.einsum(instructions, *tensors)
+
+
+# AFAIK, we also need +, +=, *, and [] to be defined directly on raw tensors
