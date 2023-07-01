@@ -20,33 +20,19 @@ from copy import copy
 
 
 
-def shape(tensor):
-    return tensor.tensornet_shape
-
 def evaluate(tensor):
-    return tensor.tensornet_evaluate()
+    return tensor._evaluate()
 
 def increment(result, tensor):    # for incrementing raw tensors of the same shape (implicitly evaluates)
-    return tensor.tensornet_increment(result)
+    return tensor._increment(result)
 
 def extract(tensor):
-    return _raw(evaluate(tensor))
+    return evaluate(tensor)._raw_tensor
 
 def scalar_value(tensor):
-    if len(shape(tensor))>0:
+    if len(tensor.shape)>0:
         raise RuntimeError("cannot take the scalar value of a tensornet tensor with >0 free indices")
-    return _backend(tensor).scalar_value(extract(tensor))
-
-# the next three are not for end users of the package
-
-def _scalar(tensor):
-    return tensor.tensornet_scalar
-
-def _raw(tensor):
-    return tensor.tensornet_raw_tensor
-
-def _backend(tensor):
-    return tensor.tensornet_backend
+    return tensor._backend.scalar_value(extract(tensor))
 
 
 

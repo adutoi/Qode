@@ -16,7 +16,7 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .base     import shape, evaluate, increment, extract, scalar_value
+from .base     import evaluate, increment, extract, scalar_value
 from .tensors  import primitive_tensor_wrapper, tensor_sum    # tensor_sum() can initialize an empty accumulator for += use
 from .contract import contract                                # the only way to build a tensor_network
 from .backends import dummy_backend, numpy_backend

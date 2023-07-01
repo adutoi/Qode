@@ -16,7 +16,7 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .base      import tensor_base, shape, evaluate, extract, scalar_value, _scalar, _raw, _backend
+from .base      import tensor_base, evaluate, extract, scalar_value
 from .tensors   import summable_tensor, tensor_sum, primitive_tensor
 from .heuristic import heuristic    # how to order contraction executions in a network
 
@@ -26,13 +26,13 @@ warned = False    # have we warned the user yet against asking for individual te
 
 class tensor_network(summable_tensor):
     def __init__(self, scalar, contractions, free_indices, backend):
-        self.tensornet_backend = backend
-        _shape = []
+        self._backend = backend
+        shape = []
         for free_index in free_indices:
             tens0, pos0 = free_index[0]      # always instantiated by function that checks congruence
-            _shape += [shape(tens0)[pos0]]
-        self.tensornet_shape = tuple(_shape)
-        self.tensornet_scalar = scalar
+            shape += [tens0.shape[pos0]]
+        self.shape = tuple(shape)
+        self._scalar = scalar
         self.contractions = contractions
         self.free_indices = free_indices
         #
@@ -51,10 +51,10 @@ class tensor_network(summable_tensor):
         contractions = _hashable(self.contractions)
         free_indices = _hashable(self.free_indices)
         self._hashable = by_id, contractions, free_indices    # hashable (redundant) catalogs for internal use only
-    def tensornet_increment(self, result):
+    def _increment(self, result):
         result += extract(self)
         return
-    def tensornet_evaluate(self):
+    def _evaluate(self):
         # It is assumed that all of the tensors in the network are represented by distinct
         # objects, even if they point to the same underlying data.  This is enforced by
         # the contract function, which is the only way for a user to make a tensor_network.
@@ -71,9 +71,9 @@ class tensor_network(summable_tensor):
             return prim_list_groups
         contraction_groups  = _group_by_tensors(contractions, allow_singles=True)
         index_reduct_groups = _group_by_tensors(free_indices)
-        shapes = {tens:shape(by_id[tens]) for tens in by_id}
+        shapes = {tens:by_id[tens].shape for tens in by_id}
         #
-        do_scalar_mult, do_reduction, target = heuristic(_scalar(self), contraction_groups, index_reduct_groups, shapes)
+        do_scalar_mult, do_reduction, target = heuristic(self._scalar, contraction_groups, index_reduct_groups, shapes)
         #
         if do_scalar_mult or do_reduction:
             if do_scalar_mult:
@@ -81,14 +81,14 @@ class tensor_network(summable_tensor):
                 other_contractions = []
                 for group,contraction_sublist in contraction_groups.items():
                     other_contractions += contraction_sublist
-                mapping = {target:list(range(len(shape(by_id[target]))))}
+                mapping = {target:list(range(len(by_id[target].shape)))}
             else:
-                new_scalar = _scalar(self)
+                new_scalar = self._scalar
                 other_contractions = []
                 for group,contraction_sublist in contraction_groups.items():
                     if group!=target:
                         other_contractions += contraction_sublist
-                mapping = {tens:[None]*len(shape(by_id[tens])) for tens in target}
+                mapping = {tens:[None]*len(by_id[tens].shape) for tens in target}
                 def _letter(idx):
                     if idx<26:  return "abcdefghijklmnopqrstuvwxyz"[idx]
                     else:       return str(idx)    # obfuscated if ever printed for >26 indices (?!)
@@ -107,10 +107,10 @@ class tensor_network(summable_tensor):
                         if mapping[tens][j] is None:
                             mapping[tens][j] = i
                             i += 1
-            args = [(_raw(by_id[tens]), *indices) for tens,indices in mapping.items()]
-            if do_scalar_mult:  args += [_scalar(self)]
+            args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()]
+            if do_scalar_mult:  args += [self._scalar]
             #
-            new_tens = primitive_tensor(_backend(self).contract(*args), _backend(self))
+            new_tens = primitive_tensor(self._backend.contract(*args), self._backend)
             #
             def _map_indices(prim_lists):
                 new_prim_lists = []
@@ -128,28 +128,28 @@ class tensor_network(summable_tensor):
                 return new_prim_lists
             new_contractions = _map_indices(other_contractions)    # guaranteed safe, ...
             new_free_indices = _map_indices(free_indices)          # ... even if new_tens is 0-dim
-            if len(shape(new_tens))==0:
+            if len(new_tens.shape)==0:
                 new_scalar *= scalar_value(new_tens)    # in no way not a scalar (unlike a 1x1x1x... tensor).  note that new_tens itself is now forgotten
-            return evaluate(tensor_network(new_scalar, new_contractions, new_free_indices, _backend(self)))    # recur
+            return evaluate(tensor_network(new_scalar, new_contractions, new_free_indices, self._backend))    # recur
         else:
             mapping = {}
             for i,free_index in enumerate(free_indices):
                 tens, pos = free_index[0]    # guaranteed to be only one entry per index now
                 if tens not in mapping:
-                    mapping[tens] = [None]*len(shape(by_id[tens]))
+                    mapping[tens] = [None]*len(by_id[tens].shape)
                 mapping[tens][pos] = i
-            args = [(_raw(by_id[tens]), *indices) for tens,indices in mapping.items()] + [_scalar(self)]
-            return primitive_tensor(_backend(self).contract(*args), _backend(self))                             # bottom out (might give a 0-dim tensor; this is intended)
+            args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()] + [self._scalar]
+            return primitive_tensor(self._backend.contract(*args), self._backend)                             # bottom out (might give a 0-dim tensor; this is intended)
     def __getitem__(self, indices):
         full = slice(None)    # the slice produced by [:] with no limits
-        new_scalar = self.tensornet_scalar
+        new_scalar = self._scalar
         by_id, contractions, free_indices = self._hashable
         slice_indices = {}
         for index,free_index in zip(indices,free_indices):
             if index!=full:
                 for tens,pos in free_index:
                     if tens not in slice_indices:
-                        slice_indices[tens] = [full]*len(shape(by_id[tens]))
+                        slice_indices[tens] = [full]*len(by_id[tens].shape)
                     slice_indices[tens][pos] = index
         mappings = {}
         for tens,tens_slice in slice_indices.items():
@@ -177,7 +177,7 @@ class tensor_network(summable_tensor):
                 new_free_indices += _map_indices(free_index)
         for contraction in contractions:
             new_contractions += _map_indices(contraction)
-        new = tensor_network(new_scalar, new_contractions, new_free_indices, self.tensornet_backend)
+        new = tensor_network(new_scalar, new_contractions, new_free_indices, self._backend)
         if len(free_indices)==0:
             if not warned:
                 print("Accessing individual elements of a tensor network is really inefficient.  Consider alternatives.")    # How user can suppress this altogether?
@@ -186,5 +186,5 @@ class tensor_network(summable_tensor):
         else:
             return new
     def __imul__(self, x):
-        self.tensornet_scalar *= x
+        self._scalar *= x
         return self
