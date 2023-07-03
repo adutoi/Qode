@@ -40,6 +40,9 @@ def scalar_value(tensor):
 class tensor_base(object):
     def __setitem__(self, item):
         raise RuntimeError("elements of tensornet tensors are not assignable")
+    # synatic sugar
+    def __call__(self, *indices):
+        return (self, *indices)
     # __mul__, __rmul__, __neg__, and __sub__ use __imul__ from child; multiplication here is always with a scalar
     def __itruediv__(self, x):
         self *= (1./x)

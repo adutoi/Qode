@@ -46,9 +46,9 @@ D = np_tensor(D_)
 # - Scalar arguments can also be given in place of tensors.
 # - A contraction "label" can be any hashable object that is not an integer (most probably
 #   a letter or a string).
-AB     = contract((A,0,p), (B,p,1))
-CD     = contract((C,p,1), (D,0,p))
-ABCD1  = contract((AB,0,p), (CD,p,1))
+AB     = contract(A(0,p), B(p,1))
+CD     = contract(C(p,1), D(0,p))
+ABCD1  = contract(AB(0,p), CD(p,1))
 ABCD1 *= 2
 
 # Let us test the above.  The evaluate() function will cause the contraction to be performed
@@ -60,7 +60,7 @@ test = 2 * numpy.einsum("pr,rt,sq,ts->pq", A_, B_, C_, D_)
 print("relative error in first  check:", numpy.linalg.norm(extract(ABCD1) - test) / numpy.linalg.norm(test))
 
 # We could have also contructed ABCD in once line as
-ABCD2 = contract(2, (A,0,p), (B,p,q), (C,r,1), (D,q,r))
+ABCD2 = contract(2, A(0,p), B(p,q), C(r,1), D(q,r))
 print("relative error in second check:", numpy.linalg.norm(extract(ABCD2) - test) / numpy.linalg.norm(test))
 
 # And just to illustrate that +, - and * (with scalars) all work.  The result of the multiplications (which are fast)
@@ -74,27 +74,24 @@ print("relative error in third  check:", numpy.linalg.norm(extract(zero)) / nump
 # each other.  Also single as well as multiple (not just double) occurances of labels can be contracted.
 # Note that the same index can occur multiply on any given tensor, and that outer products (A shares not indices)
 # are allowed
-ABCD3 = contract((A,q,0), (B,1,p), 3, (C,p,1), (D,p,p))
+ABCD3 = contract(A(q,0), B(1,p), 3, C(p,1), D(p,p))
 test = 3 * numpy.einsum("qr,sp,ps,pp->rs", A_, B_, C_, D_)
 print("relative error in fourth check:", numpy.linalg.norm(extract(ABCD3) - test) / numpy.linalg.norm(test))
 
 # But the real utility is for something like this.  E represents 4-index tensor, but its contractions with vectors
 # can be done faster if done internally as contractions with the factors
-E = contract((A,0,1), (D,2,3))
+E = contract(A(0,1), D(2,3))
 V_ = numpy.random.random((10,))
 U_ = numpy.random.random((8,))
 V = np_tensor(V_)
 U = np_tensor(U_)
-test = numpy.einsum("pq,rs,p,q,r,s->", A_, D_, V_, V_, U_, U_)
-VVEUU = contract((E,p,q,r,s), (V,p), (V,q), (U,r), (U,s))
-print("relative error in fifth  check:", numpy.linalg.norm(extract(VVEUU) - test) / numpy.linalg.norm(test))
+test = numpy.einsum("pq,rs,p,q,r,s->", A_, D_, V_, V_, U_, U_).item()
+VVEUU = scalar_value(contract(E(p,q,r,s), V(p), V(q), U(r), U(s)))
+print("relative error in fifth  check:", (VVEUU - test) / test)
 
 # indexing and slicing
 #from .tensors  import primitive_tensor_wrapper, tensor_sum    # tensor_sum() can initialize an empty accumulator for += use
 #from .backends import dummy_backend, numpy_backend
 #dummy_tensor
 
-
-
-
-
+# let * mean unfinished contraction ?

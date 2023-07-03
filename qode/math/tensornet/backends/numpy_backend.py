@@ -21,23 +21,23 @@ import numpy
 def scalar_value(tensor):
     return tensor.item()
 
+def scalar_tensor(scalar):
+    return numpy.array(scalar)
+
 def shape(tensor):
     return tensor.shape
 
 def contract(*tensor_factors):
     ####
-    args = []
-    for factor in tensor_factors:
-        try:
-            tensor,*indices = factor
-        except:
-            if len(tensor_factors)>1:
-                args += [factor]
-            else:
-                return numpy.array(factor)
-        else:
-            args += [(id(tensor),*indices)]
-    print("backend.contract called with", *args)
+    # args = []
+    # for factor in tensor_factors:
+    #     try:
+    #         tensor,*indices = factor
+    #     except:
+    #         args += [factor]
+    #     else:
+    #         args += [(id(tensor),*indices)]
+    # print("backend.contract called with", *args)
     ####
     def letters(excluded):
         i = 0
@@ -81,9 +81,9 @@ def contract(*tensor_factors):
     instructions = ",".join(instructions)
     instructions += "->"
     instructions += "".join(free_indices)
-    print("einsum called with", instructions)
+    # print("einsum called with", instructions)
     value = scalar * numpy.einsum(instructions, *tensors)
-    print("value id", id(value))
+    # print("value id", id(value))
     return value
 
 
