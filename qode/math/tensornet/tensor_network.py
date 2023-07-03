@@ -80,14 +80,14 @@ class tensor_network(summable_tensor):
         if do_scalar_mult or do_reduction:
             if do_scalar_mult:
                 # print("do_scalar_mult")
-                new_scalar = 1
+                scalar = 1
                 other_contractions = []
                 for group,contraction_sublist in contraction_groups.items():
                     other_contractions += contraction_sublist
                 mapping = {target:list(range(len(by_id[target].shape)))}
             else:
                 # print("do_reduction")
-                new_scalar = self._scalar
+                scalar = self._scalar
                 other_contractions = []
                 for group,contraction_sublist in contraction_groups.items():
                     if group!=target:
@@ -133,8 +133,8 @@ class tensor_network(summable_tensor):
             new_contractions = _map_indices(other_contractions)    # guaranteed safe, ...
             new_free_indices = _map_indices(free_indices)          # ... even if new_tens is 0-dim
             if len(new_tens.shape)==0:
-                new_scalar *= scalar_value(new_tens)    # in no way not a scalar (unlike a 1x1x1x... tensor).  note that new_tens itself is now forgotten
-            return evaluate(tensor_network(new_scalar, new_contractions, new_free_indices, self._backend))    # recur
+                scalar *= scalar_value(new_tens)    # in no way not a scalar (unlike a 1x1x1x... tensor).  note that new_tens itself is now forgotten
+            return evaluate(tensor_network(scalar, new_contractions, new_free_indices, self._backend))    # recur
         else:
             if len(free_indices)>0:
                 mapping = {}
@@ -149,7 +149,7 @@ class tensor_network(summable_tensor):
                 return primitive_tensor(self._backend.scalar_tensor(self._scalar), self._backend)
     def __getitem__(self, indices):
         full = slice(None)    # the slice produced by [:] with no limits
-        new_scalar = self._scalar
+        scalar = self._scalar
         by_id, contractions, free_indices = self._hashable
         slice_indices = {}
         for index,free_index in zip(indices,free_indices):
@@ -166,9 +166,10 @@ class tensor_network(summable_tensor):
                 if isinstance(index,slice):
                     mapping[i] = j
                     j += 1
-            mappings[tens] = (new_tens, mapping)
             if j==0:    # this tensor has no indices left in contractions or free_indices
-                new_scalar *= new_tens    # fully indexed should be a scalar.  will be forgotten when removed from contractions and free_indices
+                scalar *= new_tens    # fully indexed should be a scalar.  will be forgotten when removed from contractions and free_indices
+            else:
+                mappings[tens] = (new_tens, mapping)
         def _map_indices(prim_list):
             new_prim_list = []
             for tens,pos in prim_list:
@@ -181,11 +182,12 @@ class tensor_network(summable_tensor):
         new_free_indices, new_contractions = [], []
         for index,free_index in zip(indices,free_indices):
             if isinstance(index,slice):
-                new_free_indices += _map_indices(free_index)
+                new_free_indices += [_map_indices(free_index)]
         for contraction in contractions:
-            new_contractions += _map_indices(contraction)
-        new = tensor_network(new_scalar, new_contractions, new_free_indices, self._backend)
-        if len(free_indices)==0:
+            new_contractions += [_map_indices(contraction)]
+        new = tensor_network(scalar, new_contractions, new_free_indices, self._backend)
+        if len(new_free_indices)==0:
+            global warned
             if not warned:
                 print("Accessing individual elements of a tensor network is really inefficient.  Consider alternatives.")    # How user can suppress this altogether?
                 warned = True
@@ -195,3 +197,4 @@ class tensor_network(summable_tensor):
     def __imul__(self, x):
         self._scalar *= x
         return self
+

@@ -73,6 +73,8 @@ class tensor_sum(summable_tensor):
             other_backend = other._backend
         except:
             raise TypeError("only tensornet tensors can be added to a tensornet tensor_sum")
+        if len(self.tensor_terms)==0 and self._backend is None:
+            self._backend = other_backend    # must have started as an empty accumulator
         if other_backend is not self._backend:
             raise ValueError("only tensornet tensors with the same backend can be added")
         try:
@@ -109,13 +111,10 @@ class primitive_tensor(summable_tensor):
         else:
             self._raw_tensor = raw_tensor
     def _evaluate(self):
-        if self._scalar==1:
-            return primitive_tensor(self._raw_tensor, self._backend)                 # this might get modified and so should be independent ...
-        else:
-            return primitive_tensor(self._scalar*self._raw_tensor, self._backend)
+        return primitive_tensor(self._scalar*self._raw_tensor, self._backend)    # we want to copy the data in case someone (like tensor_sum) modifies the result of extract()
     def _increment(self, result):
         if self._scalar==1:
-            result += self._raw_tensor                                               # ... but do not make a copy just to use as an increment
+            result += self._raw_tensor                                           # ... but do not make a copy just to use as an increment
         else:
             result += self._scalar * self._raw_tensor
         return
