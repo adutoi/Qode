@@ -33,8 +33,8 @@ class tensor_network(summable_tensor):
             shape += [tens0.shape[pos0]]
         self.shape = tuple(shape)
         self._scalar = scalar
-        self.contractions = contractions
-        self.free_indices = free_indices
+        self._contractions = contractions
+        self._free_indices = free_indices
         #
         by_id = {}
         def _hashable(prim_lists):
@@ -48,8 +48,8 @@ class tensor_network(summable_tensor):
                     new_prim_list += [(tens_id, pos)]
                 new_prim_lists += [new_prim_list]
             return new_prim_lists
-        contractions = _hashable(self.contractions)
-        free_indices = _hashable(self.free_indices)
+        contractions = _hashable(self._contractions)
+        free_indices = _hashable(self._free_indices)
         self._hashable = by_id, contractions, free_indices    # hashable (redundant) catalogs for internal use only
     def _increment(self, result):
         result += extract(self)
@@ -166,7 +166,7 @@ class tensor_network(summable_tensor):
                 if isinstance(index,slice):
                     mapping[i] = j
                     j += 1
-            if j==0:    # this tensor has no indices left in contractions or free_indices
+            if j==0:                  # this tensor has no indices left in contractions or free_indices
                 scalar *= new_tens    # fully indexed should be a scalar.  will be forgotten when removed from contractions and free_indices
             else:
                 mappings[tens] = (new_tens, mapping)

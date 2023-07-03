@@ -45,7 +45,7 @@ def _contract(*tensor_factors):
             if len(indices)!=len(tens.shape):
                 raise ValueError("argument {} to contract._contract has wrong number of indices specified".format(i))
             try:
-                c = tens.contractions
+                c = tens._contractions
             except AttributeError:
                 tens = copy(tens)         # must be a primitive tensor, so, make distinct object (for hashing), ...
                 scalar *= tens._scalar    # ... accumulate scalar factors, ...
@@ -71,7 +71,7 @@ def _contract(*tensor_factors):
             elif axis_length!=tens.shape[pos]:
                 raise ValueError("incompatible axis lengths")
             try:
-                prim_list_other = tens.free_indices[pos]
+                prim_list_other = tens._free_indices[pos]
             except AttributeError:
                 prim_list += [(tens, pos)]      # must be a primitive tensor, so just copy over, or ...
             else:
@@ -104,7 +104,7 @@ def contract(*tensor_factors):
     for factor in tensor_factors:
         try:
             tens, *indices = factor
-            inner_factors = tens.tensor_terms
+            inner_factors = tens._tensor_terms
         except:
             for outer_term in outer_terms:
                 outer_term += [factor]

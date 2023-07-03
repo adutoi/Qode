@@ -31,9 +31,9 @@ class summable_tensor(tensor_base):
 # of tensor_networks and primitive_tensors.
 class tensor_sum(summable_tensor):
     def __init__(self, tensor_terms=None):
-        self._backend     = None
-        self.shape        = None
-        self.tensor_terms = []
+        self._backend      = None
+        self.shape         = None
+        self._tensor_terms = []
         if tensor_terms==None:  tensor_terms = []    # for instantiation of empty sum as accumulator
         for term in tensor_terms:
             if self._backend is None:
@@ -45,26 +45,29 @@ class tensor_sum(summable_tensor):
             if term._backend is not self._backend or term.shape!=self.shape:
                 raise ValueError("only tensornet tensors with the same backend and shape can be summed")
             try:
-                tensor_subterms = term.tensor_terms
+                tensor_subterms = term._tensor_terms
             except AttributeError:
                 new_terms = [copy(term)]                                        # we want copies, ...
             else:
                 new_terms = [copy(sub_term) for sub_term in tensor_subterms]    # ... in case we use *=
-            self.tensor_terms += new_terms
+            self._tensor_terms += new_terms
+    def _increment(self, result):
+        result += extract(self)
+        return
     def _evaluate(self):
-        result = extract(self.tensor_terms[0])
-        for term in self.tensor_terms[1:]:
+        result = extract(self._tensor_terms[0])
+        for term in self._tensor_terms[1:]:
             increment(result, term)       # move actual math out of here and let child classes decided how to add
         return primitive_tensor(result, self._backend)
     def __getitem__(self, indices):
-        indexed_tensors = [tens[indices] for tens in self.tensor_terms]
+        indexed_tensors = [tens[indices] for tens in self._tensor_terms]
         if any(isinstance(index,slice) for index in indices):
             new = tensor_sum(indexed_tensors)
         else:
             new = sum(indexed_tensors)    # should be a list of scalars if we get here
         return new
     def __imul__(self, x):                # enables __mul__, __rmul__, __neg__, and therefore also __sub__
-        for term in self.tensor_terms:
+        for term in self._tensor_terms:
             term *= x                     # will change only scalar prefactors, not raw tensors inside of primitive_tensors
         return self
     # extra functionality just for tensor_sum
@@ -73,17 +76,17 @@ class tensor_sum(summable_tensor):
             other_backend = other._backend
         except:
             raise TypeError("only tensornet tensors can be added to a tensornet tensor_sum")
-        if len(self.tensor_terms)==0 and self._backend is None:
+        if len(self._tensor_terms)==0 and self._backend is None:
             self._backend = other_backend    # must have started as an empty accumulator
         if other_backend is not self._backend:
             raise ValueError("only tensornet tensors with the same backend can be added")
         try:
-            other_tensor_terms = other.tensor_terms
+            other_tensor_terms = other._tensor_terms
         except AttributeError:
             new_terms = [copy(other)]                                              # we want copies, ...
         else:
             new_terms = [copy(other_term) for other_term in other_tensor_terms]    # ... in case we use *=
-        self.tensor_terms += new_terms
+        self._tensor_terms += new_terms
         return self
     def __isub__(self, other):            # enabled by __iadd__ and (indirectly) __imul__
         self += -other
@@ -110,14 +113,14 @@ class primitive_tensor(summable_tensor):
             self._raw_tensor = backend.copy_data(raw_tensor)
         else:
             self._raw_tensor = raw_tensor
-    def _evaluate(self):
-        return primitive_tensor(self._scalar*self._raw_tensor, self._backend)    # we want to copy the data in case someone (like tensor_sum) modifies the result of extract()
     def _increment(self, result):
         if self._scalar==1:
-            result += self._raw_tensor                                           # ... but do not make a copy just to use as an increment
+            result += self._raw_tensor                                           # do not make a copy just to use as an increment, but we want to ...
         else:
             result += self._scalar * self._raw_tensor
         return
+    def _evaluate(self):
+        return primitive_tensor(self._scalar*self._raw_tensor, self._backend)    # ... copy the data in case someone (like tensor_sum) modifies the result of extract()
     def __getitem__(self, indices):
         indexed_tensor = self._raw_tensor[indices]
         if any(isinstance(index,slice) for index in indices):

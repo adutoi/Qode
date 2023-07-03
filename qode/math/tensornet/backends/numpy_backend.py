@@ -18,6 +18,9 @@
 
 import numpy
 
+def copy_data(tensor):
+    return numpy.array(tensor)
+
 def scalar_value(tensor):
     return tensor.item()
 
@@ -85,6 +88,3 @@ def contract(*tensor_factors):
     value = scalar * numpy.einsum(instructions, *tensors)
     # print("value id", id(value))
     return value
-
-
-# AFAIK, we also need +, +=, *, and [] to be defined directly on raw tensors
