@@ -17,6 +17,7 @@
 #
 
 from copy import copy
+from .base           import to_contract
 from .tensors        import tensor_sum
 from .tensor_network import tensor_network
 
@@ -28,7 +29,7 @@ def _contract(*tensor_factors):
     scalar, contractions, new_contractions, free_indices, free_indices_as_dict, backend = 1, [], {}, [], {}, None
     for i,factor in enumerate(tensor_factors):
         try:
-            tens, *indices = factor
+            tens, indices = factor.divulge()
         except:
             try:
                 scalar *= factor
@@ -103,7 +104,7 @@ def contract(*tensor_factors):
     outer_terms = [[]]
     for factor in tensor_factors:
         try:
-            tens, *indices = factor
+            tens, indices = factor.divulge()
             inner_factors = tens._tensor_terms
         except:
             for outer_term in outer_terms:
@@ -112,7 +113,7 @@ def contract(*tensor_factors):
             new_outer_terms = []
             for outer_term in outer_terms:
                 for inner_factor in inner_factors:
-                    new_outer_terms += [outer_term + [(inner_factor, *indices)]]
+                    new_outer_terms += [outer_term + [to_contract(inner_factor, indices)]]
             outer_terms = new_outer_terms
     tensor_terms = []
     for outer_term in outer_terms:

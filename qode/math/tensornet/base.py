@@ -36,13 +36,23 @@ def scalar_value(tensor):
 
 
 
+class to_contract(object):
+    def __init__(self, tensor, indices, _inherit=None):
+        if _inherit is None:  _inherit = []
+        self._tensors  = list(_inherit)
+        self._tensors += [(tensor, indices)]
+    def divulge(self):
+        return self._tensors[0]
+
+
+
 # expected to have a backend and a shape (and a scalar if not a sum), everything else is specific to single class
 class tensor_base(object):
     def __setitem__(self, item):
         raise RuntimeError("elements of tensornet tensors are not assignable")
     # synatic sugar
     def __call__(self, *indices):
-        return (self, *indices)
+        return to_contract(self, indices)
     # __mul__, __rmul__, __neg__, and __sub__ use __imul__ from child; multiplication here is always with a scalar
     def __itruediv__(self, x):
         self *= (1./x)
