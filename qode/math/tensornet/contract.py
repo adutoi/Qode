@@ -94,7 +94,7 @@ def _contract(*tensor_factors):
             contractions += [_resolve_primitive_indices(contraction)]
         except ValueError:
             raise ValueError("incompatible lengths for summation over \"{}\" in contract._contract".format(dummy))
-    return tensor_network(scalar, contractions, free_indices, backend)
+    return tensor_network(scalar, contractions, free_indices, backend, contract)    # injects 'contract' into tensor_base so they can contract "themselves"
 
 
 
@@ -113,7 +113,7 @@ def contract(*tensor_factors):
             new_outer_terms = []
             for outer_term in outer_terms:
                 for inner_factor in inner_factors:
-                    new_outer_terms += [outer_term + [to_contract(inner_factor, indices)]]
+                    new_outer_terms += [outer_term + [to_contract(inner_factor, indices, contract)]]
             outer_terms = new_outer_terms
     tensor_terms = []
     for outer_term in outer_terms:

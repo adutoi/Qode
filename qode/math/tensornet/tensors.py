@@ -24,6 +24,8 @@ from .base    import tensor_base, increment, extract
 
 # adds general addition to any class above the base class (needs tensor_sum here for its definition)
 class summable_tensor(tensor_base):
+    def __init__(self, shape, backend, contract):
+        tensor_base.__init__(self, shape, backend, contract)
     def __add__(self, other):
         return tensor_sum([self, other])
 
@@ -31,15 +33,15 @@ class summable_tensor(tensor_base):
 # of tensor_networks and primitive_tensors.
 class tensor_sum(summable_tensor):
     def __init__(self, tensor_terms=None):
-        self._backend      = None
-        self.shape         = None
+        summable_tensor.__init__(self, None, None, None)
         self._tensor_terms = []
         if tensor_terms==None:  tensor_terms = []    # for instantiation of empty sum as accumulator
         for term in tensor_terms:
-            if self._backend is None:
+            if self.shape is None:
                 try:
-                    self._backend = term._backend
-                    self.shape    = term.shape
+                    self.shape     = term.shape        # A little dirty to
+                    self._backend  = term._backend     # mess with these
+                    self._contract = term._contract    # directly like this
                 except:
                     raise TypeError("only tensornet tensors can be summed")
             if term._backend is not self._backend or term.shape!=self.shape:
@@ -58,7 +60,7 @@ class tensor_sum(summable_tensor):
         result = extract(self._tensor_terms[0])
         for term in self._tensor_terms[1:]:
             increment(result, term)       # move actual math out of here and let child classes decided how to add
-        return primitive_tensor(result, self._backend)
+        return primitive_tensor(result, self._backend, self._contract)
     def __getitem__(self, indices):
         indexed_tensors = [tens[indices] for tens in self._tensor_terms]
         if any(isinstance(index,slice) for index in indices):
@@ -94,20 +96,14 @@ class tensor_sum(summable_tensor):
 
 
 
-def primitive_tensor_wrapper(backend, copy_data=False):
-    def wrapper(raw_tensor):
-        return primitive_tensor(raw_tensor, backend, copy_data)
-    return wrapper
-
 # The tensornet type for the primitive tensors that the user sees and uses and builds networks from.
 # The tensor importantly knows its backend, via a provided module (implemented by the user if not
 # already provided for that backend type).
 # only users ever use copy_data because we never modify here that which we wrap in a primitive_tensor
 # only this class uses _scalar.  Users should use * or *=
 class primitive_tensor(summable_tensor):
-    def __init__(self, raw_tensor, backend, copy_data=False, _scalar=1):
-        self._backend = backend
-        self.shape    = backend.shape(raw_tensor)
+    def __init__(self, raw_tensor, backend, contract, copy_data=False, _scalar=1):
+        summable_tensor.__init__(self, backend.shape(raw_tensor), backend, contract)
         self._scalar  = _scalar    # here so that we can define *= without changing original data
         if copy_data:
             self._raw_tensor = backend.copy_data(raw_tensor)
@@ -115,16 +111,16 @@ class primitive_tensor(summable_tensor):
             self._raw_tensor = raw_tensor
     def _increment(self, result):
         if self._scalar==1:
-            result += self._raw_tensor                                           # do not make a copy just to use as an increment, but we want to ...
+            result += self._raw_tensor                                                           # do not make a copy just to use as an increment, but we want to ...
         else:
             result += self._scalar * self._raw_tensor
         return
     def _evaluate(self):
-        return primitive_tensor(self._scalar*self._raw_tensor, self._backend)    # ... copy the data in case someone (like tensor_sum) modifies the result of extract()
+        return primitive_tensor(self._scalar*self._raw_tensor, self._backend, self._contract)    # ... copy the data in case someone (like tensor_sum) modifies the result of extract()
     def __getitem__(self, indices):
         indexed_tensor = self._raw_tensor[indices]
         if any(isinstance(index,slice) for index in indices):
-            new = primitive_tensor(indexed_tensor, self._backend, _scalar=self._scalar)
+            new = primitive_tensor(indexed_tensor, self._backend, self._contract, _scalar=self._scalar)
         else:
             new = self._scalar * indexed_tensor    # this is a scalar if we get here
         return new

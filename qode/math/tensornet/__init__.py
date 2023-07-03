@@ -17,9 +17,15 @@
 #
 
 from .base     import evaluate, increment, extract, scalar_value
-from .tensors  import primitive_tensor_wrapper, tensor_sum    # tensor_sum() can initialize an empty accumulator for += use
-from .contract import contract                                # the only way to build a tensor_network
+from .tensors  import tensor_sum    # tensor_sum() can initialize an empty accumulator for += use
+from .tensors  import primitive_tensor as _primitive_tensor
+from .contract import contract      # the only way to build a tensor_network
 from .backends import dummy_backend, numpy_backend
+
+def primitive_tensor_wrapper(backend, copy_data=False):
+    def wrapper(raw_tensor):
+        return _primitive_tensor(raw_tensor, backend, contract, copy_data)    # injects 'contract' into tensor_base so it they can contract "themselves"
+    return wrapper
 
 dummy_tensor = primitive_tensor_wrapper(dummy_backend, copy_data=False)
 np_tensor    = primitive_tensor_wrapper(numpy_backend, copy_data=False)

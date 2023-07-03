@@ -16,7 +16,7 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .base      import tensor_base, evaluate, extract, scalar_value
+from .base      import evaluate, extract, scalar_value
 from .tensors   import summable_tensor, tensor_sum, primitive_tensor
 from .heuristic import heuristic    # how to order contraction executions in a network
 
@@ -25,13 +25,12 @@ warned = False    # have we warned the user yet against asking for individual te
 
 
 class tensor_network(summable_tensor):
-    def __init__(self, scalar, contractions, free_indices, backend):
-        self._backend = backend
+    def __init__(self, scalar, contractions, free_indices, backend, contract):
         shape = []
         for free_index in free_indices:
             tens0, pos0 = free_index[0]      # always instantiated by function that checks congruence
             shape += [tens0.shape[pos0]]
-        self.shape = tuple(shape)
+        summable_tensor.__init__(self, tuple(shape), backend, contract)
         self._scalar = scalar
         self._contractions = contractions
         self._free_indices = free_indices
@@ -114,7 +113,7 @@ class tensor_network(summable_tensor):
             args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()]
             if do_scalar_mult:  args += [self._scalar]
             #
-            new_tens = primitive_tensor(self._backend.contract(*args), self._backend)
+            new_tens = primitive_tensor(self._backend.contract(*args), self._backend, self._contract)
             #
             def _map_indices(prim_lists):
                 new_prim_lists = []
@@ -134,7 +133,7 @@ class tensor_network(summable_tensor):
             new_free_indices = _map_indices(free_indices)          # ... even if new_tens is 0-dim
             if len(new_tens.shape)==0:
                 scalar *= scalar_value(new_tens)    # in no way not a scalar (unlike a 1x1x1x... tensor).  note that new_tens itself is now forgotten
-            return evaluate(tensor_network(scalar, new_contractions, new_free_indices, self._backend))    # recur
+            return evaluate(tensor_network(scalar, new_contractions, new_free_indices, self._backend, self._contract))    # recur
         else:
             if len(free_indices)>0:
                 mapping = {}
@@ -144,9 +143,9 @@ class tensor_network(summable_tensor):
                         mapping[tens] = [None]*len(by_id[tens].shape)
                     mapping[tens][pos] = i
                 args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()] + [self._scalar]
-                return primitive_tensor(self._backend.contract(*args), self._backend)                             # bottom out (might give a 0-dim tensor; this is intended)
+                return primitive_tensor(self._backend.contract(*args), self._backend, self._contract)                     # bottom out (might give a 0-dim tensor; this is intended)
             else:    # there is nothing left but the scalar
-                return primitive_tensor(self._backend.scalar_tensor(self._scalar), self._backend)
+                return primitive_tensor(self._backend.scalar_tensor(self._scalar), self._backend, self._contract)
     def __getitem__(self, indices):
         full = slice(None)    # the slice produced by [:] with no limits
         scalar = self._scalar
@@ -185,7 +184,7 @@ class tensor_network(summable_tensor):
                 new_free_indices += [_map_indices(free_index)]
         for contraction in contractions:
             new_contractions += [_map_indices(contraction)]
-        new = tensor_network(scalar, new_contractions, new_free_indices, self._backend)
+        new = tensor_network(scalar, new_contractions, new_free_indices, self._backend, self._contract)
         if len(new_free_indices)==0:
             global warned
             if not warned:
