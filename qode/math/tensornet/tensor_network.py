@@ -69,6 +69,8 @@ class tensor_network(summable_tensor):
                         prim_list_groups[tens_group] = []
                     prim_list_groups[tens_group] += [prim_list]
             return prim_list_groups
+        print("contractions", contractions)
+        print("free_indices", free_indices)
         contraction_groups  = _group_by_tensors(contractions, allow_singles=True)
         index_reduct_groups = _group_by_tensors(free_indices)
         shapes = {tens:by_id[tens].shape for tens in by_id}
@@ -77,12 +79,14 @@ class tensor_network(summable_tensor):
         #
         if do_scalar_mult or do_reduction:
             if do_scalar_mult:
+                print("do_scalar_mult")
                 new_scalar = 1
                 other_contractions = []
                 for group,contraction_sublist in contraction_groups.items():
                     other_contractions += contraction_sublist
                 mapping = {target:list(range(len(by_id[target].shape)))}
             else:
+                print("do_reduction")
                 new_scalar = self._scalar
                 other_contractions = []
                 for group,contraction_sublist in contraction_groups.items():
@@ -118,8 +122,8 @@ class tensor_network(summable_tensor):
                     new_prim_list = []
                     done = []
                     for tens,pos in prim_list:
-                        if tens not in done:
-                            done += [tens]
+                        if (tens,pos) not in done:
+                            done += [(tens,pos)]
                             if tens in mapping:
                                 new_prim_list += [(new_tens, mapping[tens][pos])]
                             else:
@@ -129,7 +133,11 @@ class tensor_network(summable_tensor):
             new_contractions = _map_indices(other_contractions)    # guaranteed safe, ...
             new_free_indices = _map_indices(free_indices)          # ... even if new_tens is 0-dim
             if len(new_tens.shape)==0:
-                new_scalar *= scalar_value(new_tens)    # in no way not a scalar (unlike a 1x1x1x... tensor).  note that new_tens itself is now forgotten
+                print(new_tens._scalar, self._scalar)
+                Z = scalar_value(new_tens)
+                print("SCALAR", Z)
+                new_scalar *= Z
+                #new_scalar *= scalar_value(new_tens)    # in no way not a scalar (unlike a 1x1x1x... tensor).  note that new_tens itself is now forgotten
             return evaluate(tensor_network(new_scalar, new_contractions, new_free_indices, self._backend))    # recur
         else:
             mapping = {}

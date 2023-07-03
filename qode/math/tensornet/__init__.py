@@ -21,13 +21,5 @@ from .tensors  import primitive_tensor_wrapper, tensor_sum    # tensor_sum() can
 from .contract import contract                                # the only way to build a tensor_network
 from .backends import dummy_backend, numpy_backend
 
-# With a syntax like
-#    tensor = primitive_tensor_wrapper(tensornet.numpy_backend)
-#    A = tensor(numpy.array(...))
-# the user can easily wrap all the raw tensors they like in their chosen backend.
-# ... but for convenience, here are some popular backends
 dummy_tensor = primitive_tensor_wrapper(dummy_backend, copy_data=False)
 np_tensor    = primitive_tensor_wrapper(numpy_backend, copy_data=False)
-
-
-# Usage: new_tens_network = contract((tens1,"p",0), (tens2,"p",1), scalar, (tens3,"p","p",1), (tens4,2,3))

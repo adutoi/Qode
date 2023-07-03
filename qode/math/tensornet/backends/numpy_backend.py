@@ -25,6 +25,20 @@ def shape(tensor):
     return tensor.shape
 
 def contract(*tensor_factors):
+    ####
+    args = []
+    for factor in tensor_factors:
+        try:
+            tensor,*indices = factor
+        except:
+            if len(tensor_factors)>1:
+                args += [factor]
+            else:
+                return numpy.array(factor)
+        else:
+            args += [(id(tensor),*indices)]
+    print("backend.contract called with", *args)
+    ####
     def letters(excluded):
         i = 0
         def next_letter():
@@ -54,6 +68,7 @@ def contract(*tensor_factors):
                 if isinstance(index,int):
                     if index>max_int:
                         max_int = index
+    free_indices = []
     if max_int>=0:
         next_letter = letters(all_indices)
         free_indices = [next_letter() for _ in range(max_int+1)]
@@ -66,7 +81,10 @@ def contract(*tensor_factors):
     instructions = ",".join(instructions)
     instructions += "->"
     instructions += "".join(free_indices)
-    return scalar * numpy.einsum(instructions, *tensors)
+    print("einsum called with", instructions)
+    value = scalar * numpy.einsum(instructions, *tensors)
+    print("value id", id(value))
+    return value
 
 
 # AFAIK, we also need +, +=, *, and [] to be defined directly on raw tensors
