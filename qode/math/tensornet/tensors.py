@@ -18,7 +18,7 @@
 
 from copy     import copy
 from textwrap import indent
-from .base    import tensor_base, increment, extract
+from .base    import tensor_base, increment, extract, _resolve_stars
 
 
 
@@ -37,19 +37,20 @@ class tensor_sum(summable_tensor):
         self._tensor_terms = []
         if tensor_terms==None:  tensor_terms = []    # for instantiation of empty sum as accumulator
         for term in tensor_terms:
+            term_ = _resolve_stars(term)
             if self.shape is None:
                 try:
-                    self.shape     = term.shape        # A little dirty to
-                    self._backend  = term._backend     # mess with these
-                    self._contract = term._contract    # directly like this
+                    self.shape     = term_.shape        # A little dirty to
+                    self._backend  = term_._backend     # mess with these
+                    self._contract = term_._contract    # directly like this (rather than via base class)
                 except:
                     raise TypeError("only tensornet tensors can be summed")
-            if term._backend is not self._backend or term.shape!=self.shape:
+            if term_._backend is not self._backend or term_.shape!=self.shape:
                 raise ValueError("only tensornet tensors with the same backend and shape can be summed")
             try:
-                tensor_subterms = term._tensor_terms
+                tensor_subterms = term_._tensor_terms
             except AttributeError:
-                new_terms = [copy(term)]                                        # we want copies, ...
+                new_terms = [copy(term_)]                                        # we want copies, ...
             else:
                 new_terms = [copy(sub_term) for sub_term in tensor_subterms]    # ... in case we use *=
             self._tensor_terms += new_terms
@@ -74,6 +75,7 @@ class tensor_sum(summable_tensor):
         return self
     # extra functionality just for tensor_sum
     def __iadd__(self, other):
+        other = _resolve_stars(other)
         try:
             other_backend = other._backend
         except:

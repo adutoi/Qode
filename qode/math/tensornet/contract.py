@@ -31,8 +31,10 @@ def _contract(*tensor_factors):
         try:
             tens, indices = factor.divulge()
         except:
+            tens, indices = factor, None    # assume it is a raw scalar argument
+        if indices is None:                 # assume it was either a raw scalar or a scalar wrapped in to_contract
             try:
-                scalar *= factor
+                scalar *= tens
             except:
                 raise TypeError("argument {} to contract._contract is malformed".format(i))
         else:
