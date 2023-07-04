@@ -18,7 +18,7 @@
 
 from copy     import copy
 from textwrap import indent
-from .base    import tensor_base, increment, extract, _resolve_stars
+from .base    import tensor_base, increment, extract, _resolve_contract_ops
 
 
 
@@ -37,7 +37,7 @@ class tensor_sum(summable_tensor):
         self._tensor_terms = []
         if tensor_terms==None:  tensor_terms = []    # for instantiation of empty sum as accumulator
         for term in tensor_terms:
-            term_ = _resolve_stars(term)
+            term_ = _resolve_contract_ops(term)
             if self.shape is None:
                 try:
                     self.shape     = term_.shape        # A little dirty to
@@ -75,7 +75,7 @@ class tensor_sum(summable_tensor):
         return self
     # extra functionality just for tensor_sum
     def __iadd__(self, other):
-        other = _resolve_stars(other)
+        other = _resolve_contract_ops(other)
         try:
             other_backend = other._backend
         except:

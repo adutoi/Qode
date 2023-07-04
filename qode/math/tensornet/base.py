@@ -19,30 +19,30 @@
 from copy import copy
 
 
-def _resolve_stars(tensor):
-    try:
-        temp = tensor._call_contract()
-    except:
-        temp = tensor
-    return temp
-
 
 def evaluate(tensor):
-    return tensor._evaluate()
+    return _resolve_contract_ops(tensor)._evaluate()
 
 def increment(result, tensor):    # for incrementing raw tensors of the same shape (implicitly evaluates)
-    return tensor._increment(result)
+    return _resolve_contract_ops(tensor)._increment(result)
 
 def extract(tensor):
     return evaluate(tensor)._raw_tensor
 
 def scalar_value(tensor):
-    tensor = _resolve_stars(tensor)
+    tensor = _resolve_contract_ops(tensor)
     if len(tensor.shape)>0:
         raise RuntimeError("cannot take the scalar value of a tensornet tensor with >0 free indices")
     return tensor._backend.scalar_value(extract(tensor))
 
 
+
+def _resolve_contract_ops(tensor):
+    try:
+        temp = tensor._call_contract()
+    except:
+        temp = tensor
+    return temp
 
 class to_contract(object):
     def __init__(self, tensor, indices, contract, _from_list=None):
@@ -51,15 +51,10 @@ class to_contract(object):
         else:
             self._tensors = list(_from_list)    # for internal use only.  ignores first two args
         self._contract = contract
-    def divulge(self):    # logically only called when ._tensors is of length 1
+    def divulge(self):    # logically only called from _contract when self._tensors is of length 1
         return self._tensors[0]
     def _call_contract(self):
         return self._contract(*(to_contract(*tensor, self._contract) for tensor in self._tensors))
-    def _increment(self, result):
-        increment(result, self._call_contract())
-        return
-    def _evaluate(self):
-        return evaluate(self._call_contract())
     def __call__(self, *indices):
         return self._call_contract()(*indices)
     def __getitem__(self, indices):
