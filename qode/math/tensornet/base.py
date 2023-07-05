@@ -65,7 +65,15 @@ class to_contract(object):
         except AttributeError:
             self._tensors += [(other, None)]    # assume it is a scalar.  means pure outer pdt must be written as A() * B()
         else:
-            self._tensors += other_tensors
+            raise TypeError("use | operator to join tensors via contraction or outer product")
+        return self
+    def __ior__(self, other):
+        try:
+            other_tensors = other._tensors
+        except AttributeError:
+            raise TypeError("use * operator for multiplication by a scalar")
+        else:
+            self._tensors += other_tensors 
         return self
     def __itruediv__(self, x):
         self *= (1./x)
@@ -73,6 +81,10 @@ class to_contract(object):
     def __mul__(self, other):
         new = to_contract(None, None, self._contract, _from_list=self._tensors)
         new *= other
+        return new
+    def __or__(self, other):
+        new = to_contract(None, None, self._contract, _from_list=self._tensors)
+        new |= other
         return new
     def __truediv__(self, x):
         return self * (1./x)
