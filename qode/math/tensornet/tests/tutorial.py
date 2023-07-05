@@ -196,6 +196,9 @@ print("relative error in check 18:", check(extract(ABCB1), test))
 # And as a one-liner, we could have
 ABCB2 = 2 * (A(0,p) | B(p,q) | C(r,1))(p,0) | B(p,1)
 print("relative error in check 19:", check(extract(ABCB2), test))
+# And, just for clarity, this is of course the same (in every way) as
+ABCB3 = 2 * A(s,p) | B(p,q) | C(r,0) | B(s,1)
+print("relative error in check 20:", check(extract(ABCB3), test))
 
 
 
@@ -216,9 +219,9 @@ TTMTT = extract(M(p,q,r,s) | T(p,0) | T(q,1) | T(r,2) | T(s,3))
 print("Tensornet done with 4-index transformation.  Waiting on einsum ... ")
 test = numpy.einsum("pqrs,pw,qx,ry,sz->wxyz", M_, T_, T_, T_, T_)
 print("... einsum done.")
-print("relative error in check 20:", check(TTMTT, test))
-print("If the timing difference was not dramatic enough, run the script with an argument >1 to")
-print("scale the dimensions.  But do not go nuts.  The einsum call scales with the 8th power.")
+print("relative error in check 21:", check(TTMTT, test))
+print("If the timing difference was not dramatic enough, run the script with a float argument >~1")
+print("to scale the dimensions.  But do not go nuts.  The einsum call scales with the 8th power.")
 
 
 
