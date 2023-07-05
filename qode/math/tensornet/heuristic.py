@@ -22,6 +22,10 @@ import math
 
 # This is separated out from the calling code to encapsulate the potentially fragile
 # algorithm (and make clear its dependencies), away from the more robust logic surrounding it.
+#
+# One way this could be improved is to include any subgroups of the "winning" group also
+# into the target.
+#
 def heuristic(scalar, contraction_groups, free_indices_groups, shapes):
     all_groups = {group for group in contraction_groups} | {group for group in free_indices_groups}
     reductions = {}

@@ -40,7 +40,7 @@ def scalar_value(tensor):
 def _resolve_contract_ops(tensor):
     try:
         temp = tensor._call_contract()
-    except:
+    except AttributeError:
         temp = tensor
     return temp
 

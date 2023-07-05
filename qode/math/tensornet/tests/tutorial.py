@@ -16,6 +16,12 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+### If everything is working, running this should print out a bunch of random numbers that are
+### < ~1e-15, and a single instance of a warning about extracting individual elements.  The
+### usage is explained in the comments below.
+
+import sys
+import math
 import numpy
 from qode.math.tensornet import np_tensor, tensor_sum, evaluate, increment, extract, scalar_value, contract
 
@@ -29,9 +35,7 @@ def check(xpt, ref, raw=False):    # package up the repetitive logic of checking
 
 
 
-### If everything is working, running this should print out a bunch of random numbers that are
-### < ~1e-15, and a single instance of a warning about extracting individual elements.  The
-### usage is explained in the comments below.
+    ### The Basics
 
 # Some original "raw" tensors
 A_ = numpy.random.random((10, 10))
@@ -140,6 +144,10 @@ print("relative error in check 11:", check(extract(AC), test))
 test = numpy.einsum("p,q->pq", A_[:,0], D_[:,1])
 print("relative error in check 12:", check(extract(E[:,0,:,1]), test))
 
+
+
+    ### Some Finer Points
+
 # One thing that is good to be aware of is that, if one contracts a sum (such as F below),
 # the contractions of the terms are always done first and then added (most likely desired
 # and far simpler dispatching algorithm) ...
@@ -189,7 +197,32 @@ print("relative error in check 18:", check(extract(ABCB1), test))
 ABCB2 = 2 * (A(0,p) | B(p,q) | C(r,1))(p,0) | B(p,1)
 print("relative error in check 19:", check(extract(ABCB2), test))
 
-# efficiency
+
+
+    ### About Efficiency
+
+# Here is a quick test that shows this code can be smarter than einsum in dispataching contractions.
+# Setup ...
+factor = 1
+if len(sys.argv)==2:
+    factor = float(sys.argv[1])
+dim = math.floor(factor * 10)
+M_ = numpy.random.random((dim, dim, dim, dim))
+M  = np_tensor(M_)
+T_ = numpy.random.random((dim, dim))
+T  = np_tensor(T_)
+# ... and test:
+TTMTT = extract(M(p,q,r,s) | T(p,0) | T(q,1) | T(r,2) | T(s,3))
+print("Tensornet done with 4-index transformation.  Waiting on einsum ... ")
+test = numpy.einsum("pqrs,pw,qx,ry,sz->wxyz", M_, T_, T_, T_, T_)
+print("... einsum done.")
+print("relative error in check 20:", check(TTMTT, test))
+print("If the timing difference was not dramatic enough, run the script with an argument >1 to")
+print("scale the dimensions.  But do not go nuts.  The einsum call scales with the 8th power.")
+
+
+
+    ### About Backends
 
 # Finally, the concept of a backend is local to the tensors.  Rather than have a global setting,
 # any two tensors with the same backend may enter into tensornet expressions with each other.
