@@ -25,13 +25,10 @@ import math
 import numpy
 from qode.math.tensornet import np_tensor, tensor_sum, evaluate, increment, extract, scalar_value, contract
 
-p,q,r,s = 'pqrs'                   # lower the number of quotes we need to type
+p,q,r,s = 'pqrs'        # lower the number of quotes we need to type
 
-def check(xpt, ref, raw=False):    # package up the repetitive logic of checking accuracy
-    if raw:
-        return (xpt - ref) / ref
-    else:
-        return numpy.linalg.norm(xpt - ref) / numpy.linalg.norm(ref)
+def check(xpt, ref):    # package up the repetitive logic of checking accuracy
+    return numpy.linalg.norm(xpt - ref) / numpy.linalg.norm(ref)
 
 
 
@@ -71,8 +68,9 @@ CD1    = contract(C(p,1), D(0,p))
 ABCD1  = contract(AB1(0,p), CD1(p,1))
 ABCD1 *= 2
 
-# The above can also be done by using the | operator to separate the input tensors, which
-# evntually implies the contract function will be called.  This is encouraged for easy reading,
+# The above can also be done by using the | operator to separate the input tensors.  Just using
+# the call "()" notation on a tensor already eventually implies that the contract function will
+# be called, and the | operator collects arguments for this.  This is encouraged for easy reading,
 # but it is the least well tested part of the module (so maybe check against explicit contract()
 # if you suspect a problem).  More will be said below, but one side effect of this syntax is
 # that the range checking is postponed because the calling of contract() is delayed ("lazy").
@@ -96,12 +94,14 @@ print("relative error in check  2:", check(extract(ABCD2), test))
 ABCD3 = 2 * A(0,p) | B(p,q) | C(r,1) | D(q,r)
 print("relative error in check  3:", check(extract(ABCD3), test))
 
-# This illustrates that +, - and * all work.  The result of a scalar multiplication (which is fast)
+# This illustrates that +, - and * all work on tensors networks, and the call notation "()" can
+# also be used just to permute indices.  The result of a scalar multiplication (which is fast)
 # is another tensor network whose internal scalar factor is modified.  Similarly, the result of the
 # subtraction is an abstracted structure that keeps track of the operation but performs no 
 # computation  until evaluate() or extract() is used.
-zero = 3*ABCD2 - 3*ABCD3
-print("relative error in check  4:", numpy.linalg.norm(extract(zero)) / numpy.linalg.norm(extract(ABCD3)))
+ABCD_p = 3*ABCD1 - 3*ABCD1(1,0)
+test = 3*test - 6*numpy.einsum("pr,rt,sq,ts->qp", A_, B_, C_, D_)
+print("relative error in check  4:", check(extract(ABCD_p), test))
 
 # This illustrates that there are not many restrictions on the order of the arguments or the 
 # placement of the indices.  The redundant "1" means that the 1 index of the contracted product
