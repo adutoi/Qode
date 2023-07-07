@@ -34,8 +34,8 @@ class summable_tensor(tensor_base):
 class tensor_sum(summable_tensor):
     def __init__(self, tensor_terms=None):
         summable_tensor.__init__(self, None, None, None)
-        self._tensor_terms = []
         if tensor_terms==None:  tensor_terms = []    # for instantiation of empty sum as accumulator
+        self._tensor_terms = []
         for term in tensor_terms:
             term_ = _resolve_contract_ops(term)
             if self.shape is None:
@@ -50,7 +50,7 @@ class tensor_sum(summable_tensor):
             try:
                 tensor_subterms = term_._tensor_terms
             except AttributeError:
-                new_terms = [copy(term_)]                                        # we want copies, ...
+                new_terms = [copy(term_)]                                       # we want copies, ...
             else:
                 new_terms = [copy(sub_term) for sub_term in tensor_subterms]    # ... in case we use *=
             self._tensor_terms += new_terms
@@ -60,8 +60,10 @@ class tensor_sum(summable_tensor):
     def _evaluate(self):
         result = extract(self._tensor_terms[0])
         for term in self._tensor_terms[1:]:
-            increment(result, term)       # move actual math out of here and let child classes decided how to add
+            increment(result, term)              # move actual math out of here and let child classes decided how to add
         return primitive_tensor(result, self._backend, self._contract)
+    def __copy__(self):
+        return tensor_sum(self._tensor_terms)    # makes a copy of list with copies of terms (bc both modified by += and *=)
     def __getitem__(self, indices):
         indexed_tensors = [tens[indices] for tens in self._tensor_terms]
         if any(isinstance(index,slice) for index in indices):
@@ -77,11 +79,13 @@ class tensor_sum(summable_tensor):
     def __iadd__(self, other):
         other = _resolve_contract_ops(other)
         try:
-            other_backend = other._backend
+            other_backend  = other._backend
+            other_contract = other._contract
         except:
             raise TypeError("only tensornet tensors can be added to a tensornet tensor_sum")
-        if len(self._tensor_terms)==0 and self._backend is None:
-            self._backend = other_backend    # must have started as an empty accumulator
+        if len(self._tensor_terms)==0 and self._backend is None:    # must have started as an empty accumulator
+            self._backend  = other_backend
+            self._contract = other_contract
         if other_backend is not self._backend:
             raise ValueError("only tensornet tensors with the same backend can be added")
         try:

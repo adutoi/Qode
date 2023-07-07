@@ -196,4 +196,3 @@ class tensor_network(summable_tensor):
     def __imul__(self, x):
         self._scalar *= x
         return self
-
