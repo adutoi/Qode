@@ -55,8 +55,15 @@ class to_contract(object):
         return self._tensors[0]
     def _call_contract(self):
         return self._contract(*(to_contract(*tensor, self._contract) for tensor in self._tensors))
+    def __getattr__(self, attr):
+        if attr=="shape":    # should only be called for non hard-coded attributes
+            return self._call_contract().shape
+        else:
+            raise AttributeError("'to_contract' object has no attribute '{}'".format(attr))
     def __call__(self, *indices):
         return self._call_contract()(*indices)
+    def __setitem__(self, item):
+        raise RuntimeError("elements of tensornet tensors are not assignable")
     def __getitem__(self, indices):
         return self._call_contract()[indices]
     def __imul__(self, other):
