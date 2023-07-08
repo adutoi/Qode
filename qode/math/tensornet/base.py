@@ -26,14 +26,14 @@ def evaluate(tensor):
 def increment(result, tensor):    # for incrementing raw tensors of the same shape (implicitly evaluates)
     return _resolve_contract_ops(tensor)._increment(result)
 
-def extract(tensor):
+def raw(tensor):
     return evaluate(tensor)._raw_tensor
 
 def scalar_value(tensor):
     tensor = _resolve_contract_ops(tensor)
     if len(tensor.shape)>0:
         raise RuntimeError("cannot take the scalar value of a tensornet tensor with >0 free indices")
-    return tensor._backend.scalar_value(extract(tensor))
+    return tensor._backend.scalar_value(raw(tensor))
 
 
 
@@ -65,9 +65,9 @@ class to_contract(object):
         except AttributeError:
             self._tensors += [(other, None)]    # assume it is a scalar.  means pure outer pdt must be written as A() * B()
         else:
-            raise TypeError("use | operator to join tensors via contraction or outer product")
+            raise TypeError("use @ operator to join tensors via contraction or outer product")
         return self
-    def __ior__(self, other):
+    def __imatmul__(self, other):
         try:
             other_tensors = other._tensors
         except AttributeError:
@@ -82,9 +82,9 @@ class to_contract(object):
         new = to_contract(None, None, self._contract, _from_list=self._tensors)
         new *= other
         return new
-    def __or__(self, other):
+    def __matmul__(self, other):
         new = to_contract(None, None, self._contract, _from_list=self._tensors)
-        new |= other
+        new @= other
         return new
     def __truediv__(self, x):
         return self * (1./x)

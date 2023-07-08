@@ -18,7 +18,7 @@
 
 from copy     import copy
 from textwrap import indent
-from .base    import tensor_base, increment, extract, _resolve_contract_ops
+from .base    import tensor_base, increment, raw, _resolve_contract_ops
 
 
 
@@ -55,10 +55,10 @@ class tensor_sum(summable_tensor):
                 new_terms = [copy(sub_term) for sub_term in tensor_subterms]    # ... in case we use *=
             self._tensor_terms += new_terms
     def _increment(self, result):
-        result += extract(self)
+        result += raw(self)
         return
     def _evaluate(self):
-        result = extract(self._tensor_terms[0])
+        result = raw(self._tensor_terms[0])
         for term in self._tensor_terms[1:]:
             increment(result, term)              # move actual math out of here and let child classes decided how to add
         return primitive_tensor(result, self._backend, self._contract)
@@ -122,7 +122,7 @@ class primitive_tensor(summable_tensor):
             result += self._scalar * self._raw_tensor
         return
     def _evaluate(self):
-        return primitive_tensor(self._scalar*self._raw_tensor, self._backend, self._contract)    # ... copy the data in case someone (like tensor_sum) modifies the result of extract()
+        return primitive_tensor(self._scalar*self._raw_tensor, self._backend, self._contract)    # ... copy the data in case someone (like tensor_sum) modifies the result of raw()
     def __getitem__(self, indices):
         indexed_tensor = self._raw_tensor[indices]
         if any(isinstance(index,slice) for index in indices):

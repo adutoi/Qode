@@ -16,7 +16,7 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .base      import evaluate, extract, scalar_value
+from .base      import evaluate, raw, scalar_value
 from .tensors   import summable_tensor, tensor_sum, primitive_tensor
 from .heuristic import heuristic    # how to order contraction executions in a network
 
@@ -51,7 +51,7 @@ class tensor_network(summable_tensor):
         free_indices = _hashable(self._free_indices)
         self._hashable = by_id, contractions, free_indices    # hashable (redundant) catalogs for internal use only
     def _increment(self, result):
-        result += extract(self)
+        result += raw(self)
         return
     def _evaluate(self):
         # It is assumed that all of the tensors in the network are represented by distinct

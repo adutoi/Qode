@@ -23,7 +23,7 @@
 import sys
 import math
 import numpy
-from qode.math.tensornet import np_tensor, tensor_sum, evaluate, increment, extract, scalar_value, contract
+from qode.math.tensornet import np_tensor, tensor_sum, evaluate, increment, raw, scalar_value, contract
 
 p,q,r,s = 'pqrs'        # lower the number of quotes we need to type
 
@@ -68,56 +68,56 @@ CD1    = contract(C(p,1), D(0,p))
 ABCD1  = contract(AB1(0,p), CD1(p,1))
 ABCD1 *= 2
 
-# The above can also be done by using the | operator to separate the input tensors.  Just using
+# The above can also be done by using the @ operator to separate the input tensors.  Just using
 # the call "()" notation on a tensor already eventually implies that the contract function will
-# be called, and the | operator collects arguments for this.  This is encouraged for easy reading,
+# be called, and the @ operator collects arguments for this.  This is encouraged for easy reading,
 # but it is the least well tested part of the module (so maybe check against explicit contract()
 # if you suspect a problem).  More will be said below, but one side effect of this syntax is
 # that the range checking is postponed because the calling of contract() is delayed ("lazy").
-AB2    =   A(0,p) | B(p,1)
-CD2    =   C(p,1) | D(0,p)
-ABCD2  = AB2(0,p) | CD2(p,1)
+AB2    =   A(0,p) @ B(p,1)
+CD2    =   C(p,1) @ D(0,p)
+ABCD2  = AB2(0,p) @ CD2(p,1)
 ABCD2 *= 2
 
 # Let us test the above.  The evaluate() function (more on this further below) will cause the
 # actual numerical contractions to be performed (in an optimized order) returning a new primitive
 # tensor containing the result.  The user can use evaluate() to force the computations of
-# intermediates that might be used in multiple further expressions, for example.  The extract()
+# intermediates that might be used in multiple further expressions, for example.  The raw()
 # function immediatelybelow calls evaluate() and subsequently returns the result as a raw tensor,
 # which we can test against numpy contracting the orginal data.
 test = 2 * numpy.einsum("pr,rt,sq,ts->pq", A_, B_, C_, D_)
-print("relative error in check  1:", check(extract(ABCD1), test))
-print("relative error in check  2:", check(extract(ABCD2), test))
+print("relative error in check  1:", check(raw(ABCD1), test))
+print("relative error in check  2:", check(raw(ABCD2), test))
 
 # We could have also contructed ABCD in once line as.  Note that scalar multiplication uses the
 # familiar * operator.
-ABCD3 = 2 * A(0,p) | B(p,q) | C(r,1) | D(q,r)
-print("relative error in check  3:", check(extract(ABCD3), test))
+ABCD3 = 2 * A(0,p) @ B(p,q) @ C(r,1) @ D(q,r)
+print("relative error in check  3:", check(raw(ABCD3), test))
 
 # This illustrates that +, - and * all work on tensors networks, and the call notation "()" can
 # also be used just to permute indices.  The result of a scalar multiplication (which is fast)
 # is another tensor network whose internal scalar factor is modified.  Similarly, the result of the
 # subtraction is an abstracted structure that keeps track of the operation but performs no 
-# computation  until evaluate() or extract() is used.
+# computation  until evaluate() or raw() is used.
 ABCD_p = 3*ABCD1 - 3*ABCD1(1,0)
 test = 3*test - 6*numpy.einsum("pr,rt,sq,ts->qp", A_, B_, C_, D_)
-print("relative error in check  4:", check(extract(ABCD_p), test))
+print("relative error in check  4:", check(raw(ABCD_p), test))
 
 # This illustrates that there are not many restrictions on the order of the arguments or the 
 # placement of the indices.  The redundant "1" means that the 1 index of the contracted product
 # is resolved by setting these two equal to each other.  Also single as well as multiple (not just
 # double) occurances of contraction labels are allowed.  Note that the same index can occur
 # multiply on any given tensor, and that outer products (A shares no indices with others) are allowed.
-ABCD3 = A(q,0) | B(1,p) * 3 | C(p,1) | D(p,p)
+ABCD3 = A(q,0) @ B(1,p) * 3 @ C(p,1) @ D(p,p)
 test = 3 * numpy.einsum("qr,sp,ps,pp->rs", A_, B_, C_, D_)
-print("relative error in check  5:", check(extract(ABCD3), test))
+print("relative error in check  5:", check(raw(ABCD3), test))
 
 # The real utility of tensornet is for something like this.  E represents 4-index tensor, but
 # its contractions with vectors can be done faster if done internally as contractions with the
 # factors.  The scalar_value() function extracts the scalar-typed value from a 0-index tensor
 # (like ndarray.item() in numpy).
-E = A(0,1) | D(2,3)
-VVEUU = scalar_value(E(p,q,r,s) | V(p) | V(q) | U(r) | U(s))
+E = A(0,1) @ D(2,3)
+VVEUU = scalar_value(E(p,q,r,s) @ V(p) @ V(q) @ U(r) @ U(s))
 test = numpy.einsum("pq,rs,p,q,r,s->", A_, D_, V_, V_, U_, U_).item()
 print("relative error in check  6:", (VVEUU - test) / test)
 
@@ -134,15 +134,15 @@ print("relative error in check  8:", (E[0,0,0,0] - A_[0,0]*D_[0,0]) / (A_[0,0]*D
 print("relative error in check  9:", (E[1,1,1,1] - A_[1,1]*D_[1,1]) / (A_[1,1]*D_[1,1]))
 
 # Slicing also works, ...
-print("relative error in check 10:", check(extract(A[0, 1:5]), A_[0, 1:5]))
+print("relative error in check 10:", check(raw(A[0, 1:5]), A_[0, 1:5]))
 # ... within contractions ...
-AC = A[:,:8](0,p) | C(p,1)
+AC = A[:,:8](0,p) @ C(p,1)
 test = numpy.einsum("pq,qr->pr", A_[:,:8], C_)
-print("relative error in check 11:", check(extract(AC), test))
+print("relative error in check 11:", check(raw(AC), test))
 # ... and on tensor networks (where again it first acts to slice the primitives in the network
 # before evaluation is done.
 test = numpy.einsum("p,q->pq", A_[:,0], D_[:,1])
-print("relative error in check 12:", check(extract(E[:,0,:,1]), test))
+print("relative error in check 12:", check(raw(E[:,0,:,1]), test))
 
 
 
@@ -151,54 +151,53 @@ print("relative error in check 12:", check(extract(E[:,0,:,1]), test))
 # One thing that is good to be aware of is that, if one contracts a sum (such as F below),
 # the contractions of the terms are always done first and then added (most likely desired
 # and far simpler dispatching algorithm) ...
-F = A + (5 * B(0,p) | C(p,1))    # parenthese necessary because of low precedence of | operator
+F = A + 5*B(0,p)@C(p,1)
 test = numpy.einsum("p,pq,q->", V_, A_, V_) +  5 * numpy.einsum("p,pq,qr,r->", V_, B_, C_, V_)
-print("relative error in check 13:", check(extract(V(p) | F(p,q) | V(q)), test))
+print("relative error in check 13:", check(raw(V(p) @ F(p,q) @ V(q)), test))
 # ... but the user has control over this by forcing evaluation of the intermediate first,
 # if desired.  The evaluate() function performs all internal contractions and index reductions
 # and returns a primitive (not a raw) tensor.
-print("relative error in check 14:", check(extract(V(p) | evaluate(F)(p,q) | V(q)), test))
+print("relative error in check 14:", check(raw(V(p) @ evaluate(F)(p,q) @ V(q)), test))
 
 # Should one need to loop over terms to build a sum, an empty accumulator can be started as so:
 F = tensor_sum()
-for term in [A, 5*B(0,p)|C(p,1)]:    # pretend these would be generated by some algorithm:
+for term in [A, 5*B(0,p)@C(p,1)]:    # pretend these would be generated by some algorithm:
     F += term
-print("relative error in check 15:", check(extract(V(p) | F(p,q) | V(q)), test))
+print("relative error in check 15:", check(raw(V(p) @ F(p,q) @ V(q)), test))
 
 # Here is another way to do this, if you know you want a concrete evaluation immediately.
 # This does not yet save memory with an in-place build, but the point is to leave the
 # door open for that to be implemented later (presently just a thin wrapper around
-# +=extract(...)).
+# +=raw(...)).
 F_ = numpy.zeros(A.shape)
-for term in [A, 5*B(0,p)|C(p,1)]:
+for term in [A, 5*B(0,p)@C(p,1)]:
     increment(F_, term)
 print("relative error in check 16:", check(numpy.einsum("pq,p,q->", F_, V_, V_), test)), 
 
-# And now a comment on some subtlties of the | operator.  We have already met one, which is
-# that the user needs to be aware of its low precedence (lower than +/-).  Another is that,
-# by necessity (since there is no trigger to tell it to stop, it generates "incomplete"
-# contractions.  Consider "ABCD" from above.  Done in the way below, the contraction labels
-# q and r must be shared across two lines.  This is a potential danger since one might
-# not realize a letter has been shared if lines like these are farther apart.  Whereas there
-# might actually be a niche use case for this behavior it is mostly just a  dark corner.
-ABC4  = A(0,p) | B(p,q) | C(r,1)
-ABCD4 = 2 * ABC4 | D(q,r)
+# And now a comment on a subtlty of the @ operator.  By necessity (since there is no 
+# trigger to tell it to stop, it generates "incomplete" contractions.  Consider "ABCD" from
+# above.  Done in the way below, the contraction labels q and r must be shared across two
+# lines.  This is a potential danger since one might not realize a letter has been shared if
+# lines like these are farther apart.  Whereas there might actually be a niche use case for
+# this behavior it is mostly just a  dark corner.
+ABC4  = A(0,p) @ B(p,q) @ C(r,1)
+ABCD4 = 2 * ABC4 @ D(q,r)
 test = 2 * numpy.einsum("pr,rt,sq,ts->pq", A_, B_, C_, D_)
-print("relative error in check 17:", check(extract(ABCD4), test))
+print("relative error in check 17:", check(raw(ABCD4), test))
 # However, under normal circumstances, one would not write code in this way, so the danger
 # is limited.  If one really means that, in ABC4, q and r should be summed over as individual
 # indices, leaveing only two free indices in the product, then future contractions should
 # be written more like the following (note the call with indices attached to ABC4), where we
 # have to choose something other than D just for dimension matching.
-ABCB1 = 2 * ABC4(p,0) | B(p,1)
+ABCB1 = 2 * ABC4(p,0) @ B(p,1)
 test = 2 * numpy.einsum("pq,qr,st,pu->tu", A_, B_, C_, B_)
-print("relative error in check 18:", check(extract(ABCB1), test))
+print("relative error in check 18:", check(raw(ABCB1), test))
 # And as a one-liner, we could have
-ABCB2 = 2 * (A(0,p) | B(p,q) | C(r,1))(p,0) | B(p,1)
-print("relative error in check 19:", check(extract(ABCB2), test))
+ABCB2 = 2 * (A(0,p) @ B(p,q) @ C(r,1))(p,0) @ B(p,1)
+print("relative error in check 19:", check(raw(ABCB2), test))
 # And, just for clarity, this is of course the same (in every way) as
-ABCB3 = 2 * A(s,p) | B(p,q) | C(r,0) | B(s,1)
-print("relative error in check 20:", check(extract(ABCB3), test))
+ABCB3 = 2 * A(s,p) @ B(p,q) @ C(r,0) @ B(s,1)
+print("relative error in check 20:", check(raw(ABCB3), test))
 
 
 
@@ -215,7 +214,7 @@ M  = np_tensor(M_)
 T_ = numpy.random.random((dim, dim))
 T  = np_tensor(T_)
 # ... and test:
-TTMTT = extract(M(p,q,r,s) | T(p,0) | T(q,1) | T(r,2) | T(s,3))
+TTMTT = raw(M(p,q,r,s) @ T(p,0) @ T(q,1) @ T(r,2) @ T(s,3))
 print("Tensornet done with 4-index transformation.  Waiting on einsum ... ")
 test = numpy.einsum("pqrs,pw,qx,ry,sz->wxyz", M_, T_, T_, T_, T_)
 print("... einsum done.")
