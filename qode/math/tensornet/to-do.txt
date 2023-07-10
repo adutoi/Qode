@@ -1,0 +1,67 @@
+As a one-off, other than tutorial.py, the other two tests are probably out of date and may not run.
+
+===
+
+The main thing(s) to do concern the interaction of the contract() function and the @ operator.
+
+First a bit of "theory."  One can decimate the functionality of the to_contract class and still
+preserve the utility of this module.  The only thing the to_contract class *must* do is store
+the reference to the tensornet tensor and the indices to be contract/permuted.  Then it can be
+given as such as an argument to the contract() function (hence the name "to_contract").
+
+The functionality with the @ operator was added historically later and is implemented as a
+somewhat kludgy, thin, and poorly conceived layer on top of to_contract and contract().
+However is is really very useful, and so it should just be implemented better.
+
+There is one fundamental issue that I cannot resolve that may remain just a permanent dark
+corner to warn users about (but does not interfere with how the code "should" be used)
+and probably does not present too much of a tripping hazard or trap door.  It could possibly
+even be useful.  This is issue 1 below.
+
+The other issue is just something to clean up, but I'm tired of coding now and I may only
+get to it soon if it starts biting me.  It has the effect that exceptions can be raised
+quite far away from where the user made the error.  This is issue 2.
+
+Issue 1:
+
+As much as possible, we would like the result of an expression like A(p,1) @ B(p,0) to act
+in every way like a tensor itself.  However, the string of tensors to be contracted often
+consists of more then two, and so it would be incorrect to assume that a complete and
+valid tensor has been described after every use of the @ operator.  Therefore, it is not
+safe to assume that the use of @ results in something that is a tensor in every way
+(eg, it may not even have a valid shape, due to missing free indices).  By the same token,
+since the = operator in python only means "bind" (as opposed to, say, C++), there is no
+way for the user to indicate when a tensor description is "done".  The dark corner here
+is that the result of several @ operations remembers the names of its contraction indices
+and if that result is bound to a variable, it could be @-ed with more tensors, inadvertently
+using the same letters, leading to unexpected results.  This is probably not a big deal,
+however, because this usage pattern is also unorthodox, since, after binding the result
+of an @ string to a name, that object should itself be subjected to the call operation ()
+referencing the indices of the finished product (with no memory of labels used for internal
+contractions) before being contracted with other tensors.  I'm not sure that there is
+a better solution than the one I have now, where to_contract objects simply pretend to be
+tensors (ie, they are not child classes of tensor_base, but share some behaviors that
+only work without exception if the tensors are complete and valid).
+
+Issue 2:
+
+Currently, building a to_contract object (which acts for all intents and purposes like a
+tensor) using chains of @ operations does zero checking to make sure that tensors are
+compatible with one another.  This can be fixed because, even with incomplete tensors
+(tensors with missing free indices, etc), we can tell if they have the same backend,
+and if indices that are either supposed to be contracted or reduces are (so far) of the
+same length.  It would be better for the user to raise these exceptions sooner rather 
+than later, when the to_contract "tensor" actually is finally used.
+
+One potential solution that "kills two birds with one stone" (inelegant but functional)
+is just to have contract() called after every instance of @, and not worry about
+missing free indices (free-index "gaps").  The result would only be cached however
+(returned by what is presently _resolve_contract_ops()) if it describes a complete and
+valid tensor.  This might be better facilitated with nicer internal code aesthetics
+if contract() could take a complete to_contract string as an argument.  The best
+behavior would be to interpret the multiple arguments of contract as if they had 
+all been @-ed together.
+
+A design I would like more for aesthetic reasons would be to let the result of @ be
+a child class of tensor_base, but I don't know if it is worth it, since the functionality
+would be (?) the same.
