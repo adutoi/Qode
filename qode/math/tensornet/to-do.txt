@@ -1,4 +1,20 @@
-As a one-off, other than tutorial.py, the other two tests are probably out of date and may not run.
+As one-offs:
+- dummy_test is probably out of date and may not run
+- make it such that if a backend it not installed, it does not crash just trying to import them
+- should primitive_tensor_wrapper "enforce" the tensor type by running the given tensor through a backend function (but then this would copy data)
+
+===
+
+Questions about using opt_einsum (https://joss.theoj.org/papers/10.21105/joss.00753):
+Clearly there are advantages to the fact that the authors of opt_einsum have given much more
+thought to their heuristics, but it is not immediately available for all backends, and the
+fact that my heuristics live above the backend and need to know nothing about the hardware
+to at least make a *good* guess (maybe not the best) still makes it useful.  That said, 
+on further study, we might find that opt_einsum is just as easily put on top of other backends
+as is my own code (eg, it already works on top of numpy and is default in pytorch).
+If that is the case, and we find it is a hands-down winner over my own heuristic, then we can
+just have evaluate() pass *all* of the arguments directly to opt_einsum.  This might also
+be left as a user choice.
 
 ===
 
