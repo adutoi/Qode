@@ -28,5 +28,5 @@ def primitive_tensor_wrapper(backend, copy_data=False):
     return wrapper
 
 dummy_tensor = primitive_tensor_wrapper(dummy_backend,    copy_data=False)
-np_tensor    = primitive_tensor_wrapper(numpy_backend,    copy_data=False)
-tl_tensor    = primitive_tensor_wrapper(tensorly_backend, copy_data=False)
+np_tensor    = primitive_tensor_wrapper(numpy_backend.functions,    copy_data=False)
+tl_tensor    = primitive_tensor_wrapper(tensorly_backend.functions, copy_data=False)

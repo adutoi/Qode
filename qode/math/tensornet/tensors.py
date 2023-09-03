@@ -45,7 +45,7 @@ class tensor_sum(summable_tensor):
                     self._contract = term_._contract    # directly like this (rather than via base class)
                 except:
                     raise TypeError("only tensornet tensors can be summed")
-            if term_._backend is not self._backend or term_.shape!=self.shape:
+            if term_._backend.ID()!=self._backend.ID() or term_.shape!=self.shape:
                 raise ValueError("only tensornet tensors with the same backend and shape can be summed")
             try:
                 tensor_subterms = term_._tensor_terms
@@ -86,7 +86,7 @@ class tensor_sum(summable_tensor):
         if len(self._tensor_terms)==0 and self._backend is None:    # must have started as an empty accumulator
             self._backend  = other_backend
             self._contract = other_contract
-        if other_backend is not self._backend:
+        if other_backend.ID()!=self._backend.ID():
             raise ValueError("only tensornet tensors with the same backend can be added")
         try:
             other_tensor_terms = other._tensor_terms

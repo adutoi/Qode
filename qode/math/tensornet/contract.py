@@ -41,7 +41,7 @@ def _contract(*tensor_factors):
             try:
                 if backend is None:
                     backend = tens._backend
-                if tens._backend is not backend:
+                if tens._backend.ID()!=backend.ID():
                     raise ValueError("argument {} to contract._contract has differing backend than those prior".format(i))
             except AttributeError:
                 raise  TypeError("argument {} to contract._contract does not reference a tensornet tensor".format(i))
