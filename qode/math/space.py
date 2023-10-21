@@ -429,6 +429,7 @@ class linear_inner_product_space(object):
     def __init__(self,traits):
         self.traits = _space_traits(traits)
         self.field  = self.traits.field
+        self.aux    = traits.aux
     def member(self,v):
         self.traits.check_member(v)
         return _member(v,self)
