@@ -459,7 +459,7 @@ def _default_check_member(v):             raise NotImplementedError
 def _default_check_lin_op(op):            raise NotImplementedError
 
 class traits(object):
-    def __init__(self, field, dot=_default_dot, add_to=_default_add_to, scale=_default_scale, copy=_default_copy, act_on_vec=_default_act_on_vec, back_act_on_vec=_default_back_act_on_vec, function_on_diags=_default_function_on_diags, diagonal=_default_diagonal, check_member=_default_check_member, check_lin_op=_default_check_lin_op):
+    def __init__(self, field, dot=_default_dot, add_to=_default_add_to, scale=_default_scale, copy=_default_copy, act_on_vec=_default_act_on_vec, back_act_on_vec=_default_back_act_on_vec, function_on_diags=_default_function_on_diags, diagonal=_default_diagonal, check_member=_default_check_member, check_lin_op=_default_check_lin_op, aux=None):
         self.field             = field
         self.dot               = dot
         self.add_to            = add_to
@@ -471,3 +471,4 @@ class traits(object):
         self.diagonal          = diagonal
         self.check_member      = check_member
         self.check_lin_op      = check_lin_op
+        self.aux               = aux
