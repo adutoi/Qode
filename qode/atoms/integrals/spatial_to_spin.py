@@ -94,17 +94,17 @@ def two_electron(O_raw, p_blocks, q_blocks=None, r_blocks=None, s_blocks=None):
     return O
 
 def one_electron_blocked(O_raw):
-    #raise NotImplementedError("This function deprecated.  Replace with spatial_to_spin.one_electron(<raw>, \"blocked\")")
+    raise NotImplementedError("This function deprecated.  Replace with spatial_to_spin.one_electron(<raw>, \"blocked\")")
     return one_electron(O_raw, "blocked")
 
 def one_electron_alternating(O_raw):
-    #raise NotImplementedError("This function deprecated.  Replace with spatial_to_spin.one_electron(<raw>, \"alternating\")")
+    raise NotImplementedError("This function deprecated.  Replace with spatial_to_spin.one_electron(<raw>, \"alternating\")")
     return one_electron(O_raw, "alternating")
 
 def two_electron_blocked(O_raw):
-    #raise NotImplementedError("This function deprecated.  Replace with spatial_to_spin.two_electron(<raw>, \"blocked\")")
+    raise NotImplementedError("This function deprecated.  Replace with spatial_to_spin.two_electron(<raw>, \"blocked\")")
     return two_electron(O_raw, "blocked")
 
 def two_electron_alternating(O_raw):
-    #raise NotImplementedError("This function deprecated.  Replace with spatial_to_spin.two_electron(<raw>, \"alternating\")")
+    raise NotImplementedError("This function deprecated.  Replace with spatial_to_spin.two_electron(<raw>, \"alternating\")")
     return two_electron(O_raw, "alternating")
