@@ -25,7 +25,8 @@ import numpy
 class _generic(object):
     """ Since numpy mostly treats complex and real on the same footing, this code is general; for example .conj() just make a copy of real arrays """
     def __init__(self,dim):
-        self.dim   = dim
+        self.dim = dim
+        self.aux = None
     def check_member(self,v):
         if not isinstance(v,numpy.ndarray):   raise error("numpy array expected")
         if len(v.shape)!=1:                   raise error("1D array expected")
@@ -90,6 +91,3 @@ class cplx_traits(_generic):
     def __init__(self,dim):
         _generic.__init__(self,dim)
         self.field = numpy.complex128
-
-
-
