@@ -23,6 +23,8 @@ from .biorthogonal import precise_numpy_inverse, iterative_biorthog, biorthog_it
 from .space        import abs, conjugate, sqrt, exp, linear_inner_product_space
 from .vector_set   import vector_set
 
+from .compress_tensor import svd_decomposition
+
 from . import field_traits
 from . import numpy_space
 from . import lanczos
