@@ -15,6 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
+from math import prod
 
 """\
 The class dynamic_array lives somewhere between a dictionary, a tensor, and a function.
@@ -92,6 +93,7 @@ makeing the new tensor appear to be of lower dimensionality.
 
 def _tpl(indices):
     """ A utility that promotes single values to 1-tuples for uniform processing ... means that tuples used as single-axis indices must always be wrapped as 1-tuples explicitly by user"""
+    # dark corner:  any time that a single-index array uses an index that is itself an indexable object (like a string), we need to do this ^^^
     try:
         indices[0]
     except:
@@ -120,16 +122,23 @@ class dynamic_array(object):
         else:
             self.rule = rules_rev[0]
             for rule in rules_rev[1:]:  self.rule = rule(self.rule)
-        self.keys_cache = None			# generating all keys could be pretty intense and might be repeated
+        self.keys_cache = None			# generating all keys could be pretty intense and might be repeated ... is this used anywhere?
+        try:
+            self.shape = tuple(len(rng) for rng in self.ranges)
+            self.length = prod(self.shape)
+        except:
+            self.shape  = None   # this could ...
+            self.length = None   # ... be better?
     def __getitem__(self, indices):
         indices = _tpl(indices)					# promote any single indices to 1-tuples (single indices that *are* tuples must be wrapped as 1-tuples by the user to avoid ambiguity)
-        for idx,rng in zip(indices,self.ranges):		# single indices were promoted to 1-tuples
+        if len(indices)!=len(self.ranges):
+            raise KeyError("wrong number of indices {} given for ranges {}".format(indices, self.ranges))
+        for idx,rng in zip(indices, self.ranges):		# single indices were promoted to 1-tuples
             if idx not in rng:
-                print("dyn_array recieved key:", idx)
-                print("Value not present in:\n", rng)
-                raise KeyError
+                raise KeyError("Value {} not present in {}".format(idx, rng))
         return self.rule(*indices)
-
+    def __len__(self):
+        return self.length
 
 
 def wrapper_rule(dyn_arr, sliced_out=None):
