@@ -15,4 +15,4 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
-from .TonyUtil.util import units, constants, recursive_looper, compound_range
+from .TonyUtil.util import struct, units, constants, recursive_looper, compound_range

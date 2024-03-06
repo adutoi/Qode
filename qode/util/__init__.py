@@ -15,13 +15,14 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
-from .external      import units, constants, recursive_looper, compound_range    # would be free-standing module files(?), so import directly to this level
+from .external      import struct, units, constants, recursive_looper, compound_range    # would be free-standing module files(?), so import directly to this level
 from .printfunc     import printline
 from .numpy_mat_vec import random_matrix, basis_vector, zero_vector
 from .parallel      import parallelize_task
 from .output        import textlog, output, indent, indented
 from .sort_eigen    import sort_eigen
 from .quiet         import quiet
+from .timer         import timer
 
 from . import min
 from . import max

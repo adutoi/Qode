@@ -27,6 +27,37 @@ def recursive_looper(loops, kernel, order_aware=False, _arguments=None, _level=0
     # kernel is a function (probably a wrapped version of what the user is actually
     #        intetested in) that is called in the inner-most loop, with the argument-value
     #        combintation established by the looping.
+    # Concrete example:
+    #        def f(x,y,z):
+    #            print(x,y,z)
+    #        recursive_looper([(0,[1,2,3]), (1,["a", "b", "c"]), (2,["A", "B", "C"])], f)
+    #        1 a A
+    #        1 a B
+    #        1 a C
+    #        1 b A
+    #        1 b B
+    #        1 b C
+    #        1 c A
+    #        1 c B
+    #        1 c C
+    #        2 a A
+    #        2 a B
+    #        2 a C
+    #        2 b A
+    #        2 b B
+    #        2 b C
+    #        2 c A
+    #        2 c B
+    #        2 c C
+    #        3 a A
+    #        3 a B
+    #        3 a C
+    #        3 b A
+    #        3 b B
+    #        3 b C
+    #        3 c A
+    #        3 c B
+    #        3 c C
     if _arguments is None:  _arguments = [None]*len(loops)    # initialize at top level
     if len(loops)>0:  # use >1 and move innermost loop to 'else' to minimize function calls?
         position,values = loops[0]
