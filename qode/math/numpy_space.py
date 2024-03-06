@@ -75,6 +75,9 @@ class _generic(object):
         if   len(op.shape)==2:  return numpy.dot(v.conj(),op).conj()
         else:                   return numpy.multiply(op.conj(),v)
     @staticmethod
+    def dot_vec_blocks(v_block, w_block):
+        return [[numpy.dot(v.conj(),w) for w in w_block] for v in v_block]
+    @staticmethod
     def diagonal(op):
         if   len(op.shape)==2:
             diags = numpy.array([self.field(0)]*self.dim)
