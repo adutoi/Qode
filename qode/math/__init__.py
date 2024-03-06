@@ -29,11 +29,13 @@ from . import field_traits
 from . import numpy_space
 from . import lanczos
 
+from .gram_schmidt import gram_schmidt
+
 __all__ = [
-  "pi", "floor"
-, "abs", "conjugate", "sqrt", "exp", "erf", "erfc", "linear_inner_product_space"
-, "vector_set"
-, "field_traits"
-, "numpy_space"
-, "lanczos"
+    "pi", "floor",
+    "abs", "conjugate", "sqrt", "exp", "erf", "erfc", "linear_inner_product_space",
+    "vector_set",
+    "field_traits",
+    "numpy_space",
+    "lanczos"
 ]

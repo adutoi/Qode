@@ -15,17 +15,25 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
+import sys
 import builtins
 import math
 import cmath
 import numpy
 
-metric = {\
-  float            : float         \
-, complex          : float         \
-, numpy.float64    : numpy.float64 \
-, numpy.complex128 : numpy.float64 \
-}
+metric = {
+    float:            float,
+    complex:          float,
+    numpy.float64:    numpy.float64,
+    numpy.complex128: numpy.float64
+    }
+
+machine_epsilon = {
+    float:            sys.float_info.epsilon,
+    complex:          sys.float_info.epsilon,
+    numpy.float64:    numpy.finfo(numpy.float64).eps,
+    numpy.complex128: numpy.finfo(numpy.float64).eps
+    }
 
 # even though the ints do not build a field, some of these are defined to work on them because we should not restrict what can be done
 
