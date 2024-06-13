@@ -32,8 +32,13 @@ class timer(object):
             self._timings[label] = (0, 0.)
         n, t = self._timings[label]
         self._timings[label] = (n+1, t+dt)    # increment a category by the this interval
-    def print(self):
+    def print(self, header=None):
         t_tot = time.time() - self._t00
-        print("Total time:", t_tot)
+        if header is not None:
+            print(header)
+        print("  Total time:", t_tot)
+        t_accounted = 0
         for label,info in sorted(self._timings.items(), key=lambda item: item[1][1]):
-            print("{:10s}  {:5.2f}%  {:5d} calls".format(label, 100*info[1]/t_tot, info[0]))
+            t_accounted += info[1]
+            print("  {:40s}  {:5.2f}%  {:5d} calls".format(label, 100*info[1]/t_tot, info[0]))
+        print("  {:5.2f}% accounted for".format(100*t_accounted/t_tot))
