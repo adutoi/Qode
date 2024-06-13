@@ -48,6 +48,7 @@ class vector_set(MutableSequence):
     """
     def __init__(self,space,vector_list=None,orthonormal=False):	# orthonormal=True is an unchecked assertion, specifically to prevent superfluous computation of the overlap matrix
         if vector_list is None:  vector_list = []	# mutable default arguments are dangerous.  See:  http://python-guide-pt-br.readthedocs.io/en/latest/writing/gotchas/
+        # ? This should be self._vector_list = list(vector_list)
         self._vector_list = vector_list
         self.space = space
         self.field = self.space.field
