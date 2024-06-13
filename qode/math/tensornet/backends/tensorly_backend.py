@@ -17,6 +17,22 @@
 #
 
 import tensorly
+from ....util import timer
+
+
+
+timings = None
+
+def initialize_timer():    # calling more than once just clears out the old timer
+    global timings
+    timings = timer()
+
+def print_timings(header=None):
+    global timings
+    if header is None:  header = "tensorly_backend module"
+    timings.print(header)
+
+
 
 def copy_data(tensor):
     return tensorly.copy(tensor)    # Badly implemented in tensorly; raises warning for pytorch.
@@ -31,6 +47,8 @@ def shape(tensor):
     return tensorly.shape(tensor)
 
 def contract(*tensor_factors):
+    global timings
+    if timings is not None:  timings.start()
     ####
     # args = []
     # for factor in tensor_factors:
@@ -84,8 +102,11 @@ def contract(*tensor_factors):
     instructions = ",".join(instructions)
     instructions += "->"
     instructions += "".join(free_indices)
+    if timings is not None:  timings.record("admin")
     # print("einsum called with", instructions)
+    if timings is not None:  timings.start()
     value = scalar * tensorly.einsum(instructions, *tensors)    # works with numpy and pytorch because einsum is available ... write more generally if needed
+    if timings is not None:  timings.record("einsum")
     # print("value id", id(value))
     return value
 

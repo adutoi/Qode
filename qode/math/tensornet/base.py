@@ -17,6 +17,7 @@
 #
 
 from copy import copy
+from ...util import timer
 
 
 
@@ -133,3 +134,24 @@ class tensor_base(object):
     # the following needs __add__ but cannot define here because no knowledge of tensor_sum
     def __sub__(self, other):
         return self + (-other)
+
+
+
+timings = None
+
+def initialize_timer():    # calling more than once just clears out the old timer
+    global timings
+    timings = timer()
+
+def print_timings(header=None):
+    global timings
+    if header is None:  header = "tensornet contraction engine"
+    timings.print(header)
+
+def timings_start():
+    global timings
+    if timings is not None:  timings.start()
+
+def timings_record(label):
+    global timings
+    if timings is not None:  timings.record(label)

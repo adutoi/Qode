@@ -17,7 +17,7 @@
 #
 
 from copy import copy
-from .base           import to_contract
+from .base           import to_contract, timings_start, timings_record
 from .tensors        import tensor_sum
 from .tensor_network import tensor_network
 
@@ -25,6 +25,7 @@ from .tensor_network import tensor_network
 
 # This handles the case where the tensor_factors are single terms (not sums) for contract() below
 def _contract(*tensor_factors):
+    timings_start()
     # collect arguments
     scalar, contractions, new_contractions, free_indices, free_indices_as_dict, backend = 1, [], {}, [], {}, None
     for i,factor in enumerate(tensor_factors):
@@ -96,6 +97,7 @@ def _contract(*tensor_factors):
             contractions += [_resolve_primitive_indices(contraction)]
         except ValueError:
             raise ValueError("incompatible lengths for summation over \"{}\" in contract._contract".format(dummy))
+    timings_record("contract")
     return tensor_network(scalar, contractions, free_indices, backend, contract)    # injects 'contract' into tensor_base so they can contract "themselves"
 
 

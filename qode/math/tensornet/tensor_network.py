@@ -16,7 +16,7 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .base      import evaluate, raw, scalar_value
+from .base      import evaluate, raw, scalar_value, timings_start, timings_record
 from .tensors   import summable_tensor, tensor_sum, primitive_tensor
 from .heuristic import heuristic    # how to order contraction executions in a network
 
@@ -54,6 +54,7 @@ class tensor_network(summable_tensor):
         result += raw(self)
         return
     def _evaluate(self):
+        timings_start()
         # It is assumed that all of the tensors in the network are represented by distinct
         # objects, even if they point to the same underlying data.  This is enforced by
         # the contract function, which is the only way for a user to make a tensor_network.
@@ -73,10 +74,14 @@ class tensor_network(summable_tensor):
         contraction_groups  = _group_by_tensors(contractions, allow_singles=True)
         index_reduct_groups = _group_by_tensors(free_indices)
         shapes = {tens:by_id[tens].shape for tens in by_id}
+        timings_record("tensor_network._evaluate")
         #
+        timings_start()
         do_scalar_mult, do_reduction, target = heuristic(self._scalar, contraction_groups, index_reduct_groups, shapes)
+        timings_record("heuristic")
         #
         if do_scalar_mult or do_reduction:
+            timings_start()
             if do_scalar_mult:
                 # print("do_scalar_mult")
                 scalar = 1
@@ -112,9 +117,13 @@ class tensor_network(summable_tensor):
                             i += 1
             args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()]
             if do_scalar_mult:  args += [self._scalar]
+            timings_record("tensor_network._evaluate")
             #
+            timings_start()
             new_tens = primitive_tensor(self._backend.contract(*args), self._backend, self._contract)
+            timings_record("backend.contract")
             #
+            timings_start()
             def _map_indices(prim_lists):
                 new_prim_lists = []
                 for prim_list in prim_lists:
@@ -133,9 +142,11 @@ class tensor_network(summable_tensor):
             new_free_indices = _map_indices(free_indices)          # ... even if new_tens is 0-dim
             if len(new_tens.shape)==0:
                 scalar *= scalar_value(new_tens)    # in no way not a scalar (unlike a 1x1x1x... tensor).  note that new_tens itself is now forgotten
+            timings_record("tensor_network._evaluate")
             return evaluate(tensor_network(scalar, new_contractions, new_free_indices, self._backend, self._contract))    # recur
         else:
             if len(free_indices)>0:
+                timings_start()
                 mapping = {}
                 for i,free_index in enumerate(free_indices):
                     tens, pos = free_index[0]    # guaranteed to be only one entry per index now
@@ -143,7 +154,11 @@ class tensor_network(summable_tensor):
                         mapping[tens] = [None]*len(by_id[tens].shape)
                     mapping[tens][pos] = i
                 args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()] + [self._scalar]
-                return primitive_tensor(self._backend.contract(*args), self._backend, self._contract)                     # bottom out (might give a 0-dim tensor; this is intended)
+                timings_record("tensor_network._evaluate")
+                timings_start()
+                Z = primitive_tensor(self._backend.contract(*args), self._backend, self._contract)                     # bottom out (might give a 0-dim tensor; this is intended)
+                timings_record("backend.contract")
+                return Z
             else:    # there is nothing left but the scalar
                 return primitive_tensor(self._backend.scalar_tensor(self._scalar), self._backend, self._contract)
     def __getitem__(self, indices):
