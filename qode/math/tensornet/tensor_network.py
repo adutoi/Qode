@@ -16,7 +16,7 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .base      import evaluate, raw, scalar_value, timings_start, timings_record
+from .base      import evaluate, raw, scalar_value, resolve_ellipsis, timings_start, timings_record
 from .tensors   import summable_tensor, tensor_sum, primitive_tensor
 from .heuristic import heuristic    # how to order contraction executions in a network
 
@@ -164,6 +164,7 @@ class tensor_network(summable_tensor):
             else:    # there is nothing left but the scalar
                 return primitive_tensor(self._backend.scalar_tensor(self._scalar), self._backend, self._contract)
     def __getitem__(self, indices):
+        indices = resolve_ellipsis(indices, self.shape)
         full = slice(None)    # the slice produced by [:] with no limits
         scalar = self._scalar
         by_id, contractions, free_indices = self._hashable

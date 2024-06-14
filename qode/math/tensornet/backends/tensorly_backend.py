@@ -21,16 +21,16 @@ from ....util import timer
 
 
 
-timings = None
+_timings = None
 
 def initialize_timer():    # calling more than once just clears out the old timer
-    global timings
-    timings = timer()
+    global _timings
+    _timings = timer()
 
 def print_timings(header=None):
-    global timings
+    global _timings
     if header is None:  header = "tensorly_backend module"
-    timings.print(header)
+    _timings.print(header)
 
 
 
@@ -50,8 +50,8 @@ def zeros(shape):
     return tensorly.zeros(shape)
 
 def contract(*tensor_factors):
-    global timings
-    if timings is not None:  timings.start()
+    global _timings
+    if _timings is not None:  _timings.start()
     ####
     # args = []
     # for factor in tensor_factors:
@@ -105,11 +105,11 @@ def contract(*tensor_factors):
     instructions = ",".join(instructions)
     instructions += "->"
     instructions += "".join(free_indices)
-    if timings is not None:  timings.record("admin")
+    if _timings is not None:  _timings.record("admin")
     # print("einsum called with", instructions)
-    if timings is not None:  timings.start()
+    if _timings is not None:  _timings.start()
     value = scalar * tensorly.einsum(instructions, *tensors)    # works with numpy and pytorch because einsum is available ... write more generally if needed
-    if timings is not None:  timings.record("einsum")
+    if _timings is not None:  _timings.record("einsum")
     # print("value id", id(value))
     return value
 

@@ -22,23 +22,38 @@ from ...util import timer
 
 
 def evaluate(tensor):
-    return _resolve_contract_ops(tensor)._evaluate()
+    return resolve_contract_ops(tensor)._evaluate()
 
 def increment(result, tensor):    # for incrementing raw tensors of the same shape (implicitly evaluates)
-    return _resolve_contract_ops(tensor)._increment(result)
+    return resolve_contract_ops(tensor)._increment(result)
 
 def raw(tensor):
     return evaluate(tensor)._raw_tensor
 
 def scalar_value(tensor):
-    tensor = _resolve_contract_ops(tensor)
+    tensor = resolve_contract_ops(tensor)
     if len(tensor.shape)>0:
         raise RuntimeError("cannot take the scalar value of a tensornet tensor with >0 free indices")
     return tensor._backend.scalar_value(raw(tensor))
 
 
 
-def _resolve_contract_ops(tensor):
+def resolve_ellipsis(indices, shape):
+    ellipsis_resolution = [slice(None)] * (len(shape) - len(indices) + 1)
+    new_indices = []
+    found_ellipsis = False
+    for index in indices:
+        if index is Ellipsis:
+            if found_ellipsis:  raise IndexError("an index can only have a single ellipsis")
+            new_indices += ellipsis_resolution
+            found_ellipsis = True
+        else:
+            new_indices += [index]
+    return tuple(new_indices)
+
+
+
+def resolve_contract_ops(tensor):
     try:
         temp = tensor._call_contract()
     except AttributeError:
@@ -137,21 +152,21 @@ class tensor_base(object):
 
 
 
-timings = None
+_timings = None
 
 def initialize_timer():    # calling more than once just clears out the old timer
-    global timings
-    timings = timer()
+    global _timings
+    _timings = timer()
 
 def print_timings(header=None):
-    global timings
+    global _timings
     if header is None:  header = "tensornet contraction engine"
-    timings.print(header)
+    _timings.print(header)
 
 def timings_start():
-    global timings
-    if timings is not None:  timings.start()
+    global _timings
+    if _timings is not None:  _timings.start()
 
 def timings_record(label):
-    global timings
-    if timings is not None:  timings.record(label)
+    global _timings
+    if _timings is not None:  _timings.record(label)

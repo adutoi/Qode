@@ -18,7 +18,7 @@
 
 from copy     import copy
 from textwrap import indent
-from .base    import tensor_base, increment, raw, _resolve_contract_ops
+from .base    import tensor_base, increment, raw, resolve_ellipsis, resolve_contract_ops
 
 
 
@@ -37,7 +37,7 @@ class tensor_sum(summable_tensor):
         if tensor_terms==None:  tensor_terms = []    # for instantiation of empty sum as accumulator
         self._tensor_terms = []
         for term in tensor_terms:
-            term_ = _resolve_contract_ops(term)
+            term_ = resolve_contract_ops(term)
             if self.shape is None:
                 try:
                     self.shape     = term_.shape        # A little dirty to
@@ -69,6 +69,7 @@ class tensor_sum(summable_tensor):
     def __copy__(self):
         return tensor_sum(self._tensor_terms)    # makes a copy of list with copies of terms (bc both modified by += and *=)
     def __getitem__(self, indices):
+        indices = resolve_ellipsis(indices, self.shape)
         indexed_tensors = [tens[indices] for tens in self._tensor_terms]
         if any(isinstance(index,slice) for index in indices):
             new = tensor_sum(indexed_tensors)
@@ -81,17 +82,21 @@ class tensor_sum(summable_tensor):
         return self
     # extra functionality just for tensor_sum
     def __iadd__(self, other):
-        other = _resolve_contract_ops(other)
+        other = resolve_contract_ops(other)
         try:
+            other_shape    = other.shape
             other_backend  = other._backend
             other_contract = other._contract
         except:
             raise TypeError("only tensornet tensors can be added to a tensornet tensor_sum")
         if len(self._tensor_terms)==0 and self._backend is None:    # must have started as an empty accumulator
+            self.shape     = other_shape
             self._backend  = other_backend
             self._contract = other_contract
         if other_backend.ID()!=self._backend.ID():
             raise ValueError("only tensornet tensors with the same backend can be added")
+        if other_shape!=self.shape:
+            raise ValueError("only tensors with equivalent shapes can be summed")
         try:
             other_tensor_terms = other._tensor_terms
         except AttributeError:
@@ -128,6 +133,7 @@ class primitive_tensor(summable_tensor):
     def _evaluate(self):
         return primitive_tensor(self._scalar*self._raw_tensor, self._backend, self._contract)    # ... copy the data in case someone (like tensor_sum) modifies the result of raw()
     def __getitem__(self, indices):
+        indices = resolve_ellipsis(indices, self.shape)
         indexed_tensor = self._raw_tensor[indices]
         if any(isinstance(index,slice) for index in indices):
             new = primitive_tensor(indexed_tensor, self._backend, self._contract, _scalar=self._scalar)
