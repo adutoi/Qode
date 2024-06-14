@@ -36,9 +36,9 @@ class timer(object):
         t_tot = time.time() - self._t00
         if header is not None:
             print(header)
-        print("  Total time:", t_tot)
+        print("  Total time:  {:5.2f}".format(t_tot))
         t_accounted = 0
         for label,info in sorted(self._timings.items(), key=lambda item: item[1][1]):
             t_accounted += info[1]
-            print("  {:40s}  {:5.2f}%  {:5d} calls".format(label, 100*info[1]/t_tot, info[0]))
+            print("  {:30s}  {:5.2f}%  {:5d} calls".format(label, 100*info[1]/t_tot, info[0]))
         print("  {:5.2f}% accounted for".format(100*t_accounted/t_tot))

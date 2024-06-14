@@ -30,6 +30,9 @@ def scalar_tensor(scalar):
 def shape(tensor):
     return tensor.shape
 
+def zeros(shape):
+    return numpy.zeros(shape)
+
 def contract(*tensor_factors):
     ####
     # args = []
@@ -109,6 +112,8 @@ class _functions(object):
         return scalar_tensor(scalar)
     def shape(self, tensor):
         return shape(tensor)
+    def zeros(self, shape):
+        return zeros(shape)
     def contract(self, *tensor_factors):
         return contract(*tensor_factors)
 

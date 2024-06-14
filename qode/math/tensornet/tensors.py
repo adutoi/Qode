@@ -58,9 +58,13 @@ class tensor_sum(summable_tensor):
         result += raw(self)
         return
     def _evaluate(self):
-        result = raw(self._tensor_terms[0])
-        for term in self._tensor_terms[1:]:
-            increment(result, term)              # move actual math out of here and let child classes decided how to add
+        result = None
+        for term in self._tensor_terms:
+            if term._scalar!=0:
+                if result is None:  result = raw(term)
+                else:               increment(result, term)    # move actual math out of here and let child classes decided how to add
+        if result is None:
+            result = raw(self._tensor_terms[0])                # will produce zero tensor of correct dimensions
         return primitive_tensor(result, self._backend, self._contract)
     def __copy__(self):
         return tensor_sum(self._tensor_terms)    # makes a copy of list with copies of terms (bc both modified by += and *=)

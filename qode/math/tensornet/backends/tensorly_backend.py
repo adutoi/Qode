@@ -46,6 +46,9 @@ def scalar_tensor(scalar):
 def shape(tensor):
     return tensorly.shape(tensor)
 
+def zeros(shape):
+    return tensorly.zeros(shape)
+
 def contract(*tensor_factors):
     global timings
     if timings is not None:  timings.start()
@@ -130,6 +133,8 @@ class _functions(object):
         return scalar_tensor(scalar)
     def shape(self, tensor):
         return shape(tensor)
+    def zeros(self, shape):
+        return zeros(shape)
     def contract(self, *tensor_factors):
         return contract(*tensor_factors)
 

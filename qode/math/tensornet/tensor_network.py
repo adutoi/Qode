@@ -54,6 +54,8 @@ class tensor_network(summable_tensor):
         result += raw(self)
         return
     def _evaluate(self):
+        if self._scalar==0:    # usually a bad test, but in this case we really mean it.  If it is not exactly zero, there is something to do, and zero can happen (ie, a = 0 * b)
+            return primitive_tensor(self._backend.zeros(self.shape), self._backend, self._contract)
         timings_start()
         # It is assumed that all of the tensors in the network are represented by distinct
         # objects, even if they point to the same underlying data.  This is enforced by
