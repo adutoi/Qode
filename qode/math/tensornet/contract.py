@@ -122,6 +122,17 @@ def contract(*tensor_factors):
     tensor_terms = []
     for outer_term in outer_terms:
         tensor_terms += [_contract(*outer_term)]
+    #
+    result_hashes = sorted((term._result_hash, i) for i,term in enumerate(tensor_terms))
+    tensor_terms, tensor_terms_ = [], tensor_terms
+    previous = None
+    for result_hash,i in result_hashes:
+        if result_hash==previous:
+            tensor_terms[-1]._scalar += tensor_terms_[i]._scalar
+        else:
+            tensor_terms += [tensor_terms_[i]]
+        previous = result_hash
+    #
     if len(tensor_terms)==1:
         return tensor_terms[0]
     else:

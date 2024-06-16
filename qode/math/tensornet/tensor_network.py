@@ -50,6 +50,12 @@ class tensor_network(summable_tensor):
         contractions = _hashable(self._contractions)
         free_indices = _hashable(self._free_indices)
         self._hashable = by_id, contractions, free_indices    # hashable (redundant) catalogs for internal use only
+        # Nested tuples of hashable values like that below can automatically be sorted lexicographically, and they can be tested 
+        # for equality.  Although false *negatives* can happen, if they are equal, the result is guaranteed to be the same.  This
+        # can be useful in sums where permutationally (anti)symmetric tensors are built from asymmetric primitives and then contracted.
+        # Redundant terms can be recognized in n*log(n) time by sorting and grouping.
+        self._result_hash = ( tuple(sorted(tuple(sorted((id(tens._raw_tensor), pos) for tens,pos in prim_list)) for prim_list in self._contractions)),
+                              tuple(sorted(tuple(sorted((id(tens._raw_tensor), pos) for tens,pos in prim_list)) for prim_list in self._free_indices)) )
     def _increment(self, result):
         result += raw(self)
         return
