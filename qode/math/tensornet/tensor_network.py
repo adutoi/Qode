@@ -20,9 +20,22 @@ from .base      import evaluate, raw, scalar_value, resolve_ellipsis, timings_st
 from .tensors   import summable_tensor, tensor_sum, primitive_tensor
 from .heuristic import heuristic    # how to order contraction executions in a network
 
-warned = False    # have we warned the user yet against asking for individual tensor elements?
+_warned = False    # have we warned the user yet against asking for individual tensor elements?
 
 
+
+# Barebones theory (written much later after a forensic debug battle.  A tensor_network object contains
+# two fundamental pieces of information (and other incidental info).  One is a list of contractions.
+# Each contraction itself is a list of two-tuples; each two-tuple identifies a tensor and the index
+# of that tensor involved in the contraction.  So if a contraction contains two two-tuples, then 
+# two indices are contracted with one another, but there might be more.  The ordering of the list
+# of contractions is irrelevant, as is the list of two-tuples that defines a given contraction.
+# The other piece of information is a list of free indices of the result, which correspond to uncontracted
+# indices of the tensors in the network.  This list is ordered, and each free index is itself 
+# a list of two-tuples with the same tensor-index structure as the two-tuples that define a contraction.
+# In the most usual case, each such list corresponding to a free index will be of length one, but
+# if there is more than one tensor index that corresponds to a single free index it is because
+# those indices are set equal to each other and reduced to a single free index.
 
 class tensor_network(summable_tensor):
     def __init__(self, scalar, contractions, free_indices, backend, contract):
@@ -55,7 +68,7 @@ class tensor_network(summable_tensor):
         # can be useful in sums where permutationally (anti)symmetric tensors are built from asymmetric primitives and then contracted.
         # Redundant terms can be recognized in n*log(n) time by sorting and grouping.
         self._result_hash = ( tuple(sorted(tuple(sorted((id(tens._raw_tensor), pos) for tens,pos in prim_list)) for prim_list in self._contractions)),
-                              tuple(sorted(tuple(sorted((id(tens._raw_tensor), pos) for tens,pos in prim_list)) for prim_list in self._free_indices)) )
+                                     tuple(tuple(sorted((id(tens._raw_tensor), pos) for tens,pos in prim_list)) for prim_list in self._free_indices) )
     def _increment(self, result):
         result += raw(self)
         return
@@ -210,10 +223,10 @@ class tensor_network(summable_tensor):
             new_contractions += [_map_indices(contraction)]
         new = tensor_network(scalar, new_contractions, new_free_indices, self._backend, self._contract)
         if len(new_free_indices)==0:
-            global warned
-            if not warned:
+            global _warned
+            if not _warned:
                 print("Accessing individual elements of a tensor network is really inefficient.  Consider alternatives.")    # How user can suppress this altogether?
-                warned = True
+                _warned = True
             return scalar_value(new)
         else:
             return new
