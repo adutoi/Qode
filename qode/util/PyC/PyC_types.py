@@ -23,8 +23,8 @@
 #
 # Below we document the names of some numpy types that are defined to be
 # equivalent to certain types in the local C implementation and also give
-# name that ctypes uses for this.  Other safe types could be, added but
-# these are the most useful to use now.
+# name that ctypes uses for this.  Other safe types could be added but
+# these are the most useful to us now.
 #
 # An important theoretical aspect is that C and numpy really specify the
 # data type itself.  The ctypes name only specifies how existing data is
@@ -43,18 +43,20 @@
 
 import ctypes
 import numpy
+import tensorly  # not sure I am happy with adding tensorly stuff at this level (is it as solid?, requires user to have tensorly)
 
 class PyC_type(object):
-    def __init__(self, numpy_dtype, ctypes_name):
-        self.numpy  = numpy_dtype
-        self.ctypes = ctypes_name
+    def __init__(self, numpy_dtype, ctypes_name, tensorly_name):
+        self.numpy    = numpy_dtype
+        self.ctypes   = ctypes_name
+        self.tensorly = tensorly_name
 
 # These lines attach numpy and ctypes naming to our PyC name.
 # The PyC_types.h connects this information to the C types.
 
-Int    = PyC_type(numpy.intc,    ctypes.c_int)
-BigInt = PyC_type(numpy.intp,    ctypes.c_ssize_t)
-Double = PyC_type(numpy.float64, ctypes.c_double)
+Int    = PyC_type(numpy.intc,    ctypes.c_int,     None)
+BigInt = PyC_type(numpy.intp,    ctypes.c_ssize_t, None)
+Double = PyC_type(numpy.float64, ctypes.c_double,  tensorly.float64)
 
 # Just a list of all the low-level types that are mapped
 

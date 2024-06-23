@@ -56,6 +56,8 @@ def _SVD(M, big, print_info):
     return U, s, Vh
 
 def svd_decomposition(nparray_Nd, indices_A, indices_B=None, thresh=1e-6, big=10**5, wrapper=tensornet.np_tensor, print_info=False):
+    if print_info:
+        print("size =", numpy.prod(nparray_Nd.shape))
     if indices_B is None:  indices_B = []
     all_free_indices = list(indices_A) + list(indices_B)
     if list(sorted(all_free_indices))!=list(range(len(nparray_Nd.shape))):
