@@ -31,6 +31,13 @@
 # >>> f(**as_dict(a("attr1 attr2")))          # ... case extension
 # >>> f(**as_dict(a))                         # This is completely safe/predictable if want all members
 #
+# Another use is for one-off classes where field names (accessible via dot syntax) are predetermined:
+# >>> class data(struct):
+# >>>     def __init__(self, attr1, attr2):
+# >>>         struct.__init__(self, attr1=attr1, attr2=attr2)
+# >>>     def __str__(self):
+# >>>         return f"My contents are: {self.attr1}, {self.attr2}"
+#
 # What is different than collections.namedtuple?
 # - instances are mutable (can be advantage)
 # - unpacking/splatting syntax is heavier (disadvantage) but more flexible (advantage)
@@ -40,6 +47,8 @@
 # for the name of a variable, function, class, etc), but should not begin with an underscore
 # (not enforced though, and you can get a way with it for all but a small number of cases).
 # See implementation notes at the end of the file (to understand some of the terse comments)
+
+import itertools
 
 
 
@@ -71,6 +80,7 @@ class struct(object):
         except KeyError:
             raise AttributeError(repr(attr))
     def __call__(self, *attrs):    # allows the taking of a sub-namespace
+        attrs = [attr for attr in itertools.chain.from_iterable([attr.split(" ") for attr in attrs]) if attr!=""]
         kwargs = {attr:self._data_dict[attr] for attr in attrs}
         return struct(**kwargs)
     def __repr__(self):
