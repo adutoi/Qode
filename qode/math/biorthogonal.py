@@ -16,10 +16,16 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 import numpy
+import torch
 
 def precise_numpy_inverse(M):
         M_inv  = numpy.linalg.inv(M)
         refine = numpy.linalg.inv(M_inv @ M)    # inverting something very close the the identity matrix
+        return refine @ M_inv
+
+def precise_torch_inverse(M):
+        M_inv  = torch.linalg.inv(M)
+        refine = torch.linalg.inv(M_inv @ M)
         return refine @ M_inv
 
 # Let {|v^j>} be the full set of BO complements to the set {|v_j>}.  The resolution of a vector |u> in terms of {|v_j>}

@@ -52,7 +52,8 @@ def _contract(*tensor_factors):
             except AttributeError:
                 tens = copy(tens)         # must be a primitive tensor, so, make distinct object (for hashing), ...
                 scalar *= tens._scalar    # ... accumulate scalar factors, ...
-                tens /= scalar            # ... and renormalize copy
+                if abs(scalar) >= 1e-14:
+                    tens /= scalar            # ... and renormalize copy
             else:
                 contractions += c         # inherit contractions from input tensors ...
                 scalar *= tens._scalar    # ... and accumulate scalar factors

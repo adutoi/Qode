@@ -18,7 +18,7 @@
 from math  import *
 from cmath import *
 
-from .biorthogonal import precise_numpy_inverse, iterative_biorthog, biorthog_iteration
+from .biorthogonal import precise_numpy_inverse, precise_torch_inverse, iterative_biorthog, biorthog_iteration
 
 from .space        import abs, conjugate, sqrt, exp, linear_inner_product_space
 from .vector_set   import vector_set
