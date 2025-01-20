@@ -19,6 +19,13 @@
 import tensorly
 from ....util import timer
 
+# These lines are optional and enable the use of opt_einsum instead of regular einsum,
+# which needs to be installed: see https://optimized-einsum.readthedocs.io/en/stable/install.html#conda.
+from tensorly import tenalg
+tenalg.set_backend('einsum')   # Is this not the default?  Oh well, it works.  See https://tensorly.org/stable/modules/generated/tensorly.plugins.use_opt_einsum.html#tensorly.plugins.use_opt_einsum
+from tensorly import plugins
+plugins.use_opt_einsum()
+
 
 
 _timings = None
