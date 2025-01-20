@@ -16,6 +16,27 @@ If that is the case, and we find it is a hands-down winner over my own heuristic
 just have evaluate() pass *all* of the arguments directly to opt_einsum.  This might also
 be left as a user choice.
 
+Update:
+opt_einsum can now be enabled with the tensorly backend by the use of the following two lines, probably at the top-level:
+  tensorly_plugins.use_opt_einsum()
+  qode.math.tensornet.backend_contract_path(True)
+See also:
+  https://tensorly.org/stable/modules/generated/tensorly.plugins.use_opt_einsum.html#tensorly.plugins.use_opt_einsum
+  https://optimized-einsum.readthedocs.io/en/stable/install.html#conda
+I'm not a big fan of how this works because, IMO, all decisions about how to contract tensors should
+be as local as possible.  Say, for example, you wanted to merge two codes that had been using different
+backends for the tensors.  It will be a lot more convenient if you don't have to force them to agree on one.
+This is why my tensors carry knowledge of their backends with them, and the only thing that matters when
+two tensors meet is that they are the same (which is presumably the case within any given code domain).
+Now there is this wart, where you insist that all tensors (even those with different backends) are either
+going to use the frontend or the backend contraction path.  Probably this is ok for well over 90% of use
+cases, but I would like to clean it up.  At the same time though, making the backend_contract_path
+option a feature of a backend is also not really (ie, could carry this option around with the tensors)
+because it is not a feature of the backend, it is a feature of a contraction within the context of a 
+backend.  We certainly do not want to insist that a tensor created with one way of determining the contraction
+path cannot be contracted with a tensor with a different "opinion" on the way of determining the contraction
+path.  At the moment then, this is the least of evils.  At least a user can dynamically switch back and forth.
+
 ===
 
 The main thing(s) to do concern the interaction of the contract() function and the @ operator.

@@ -20,9 +20,12 @@ from .base      import evaluate, raw, scalar_value, resolve_ellipsis, timings_st
 from .tensors   import summable_tensor, tensor_sum, primitive_tensor
 from .heuristic import heuristic    # how to order contraction executions in a network
 
-_opt_einsum_dispatch = False    # now an option for a developer to hardcode; eventually an option to a backend (accessed from this layer)
+_backend_contract_path = False    # if True, let backend handle finding the optimal contraction path upon evaluate() call
+_warned = False                   # have we warned the user yet against asking for individual tensor elements?
 
-_warned = False    # have we warned the user yet against asking for individual tensor elements?
+def backend_contract_path(TrueFalse):
+    global _backend_contract_path
+    _backend_contract_path = TrueFalse
 
 
 
@@ -84,7 +87,7 @@ class tensor_network(summable_tensor):
         # Also, the individual primitives have all been forced to have unit scalar by adjusting the overall scalar.
         by_id, contractions, free_indices = self._hashable
         #
-        if _opt_einsum_dispatch:    # All the tensors in one big group
+        if _backend_contract_path:    # All the tensors in one big group
             do_scalar_mult = False if self._scalar==1 else True
             do_reduction   = True
             tens_group = tuple(sorted({tens for contraction in contractions for tens,_ in contraction}
@@ -92,7 +95,7 @@ class tensor_network(summable_tensor):
             contraction_groups  = {tens_group: contractions}
             index_reduct_groups = {tens_group: free_indices}
             target = tens_group
-        else:                       # Use tensornet contraction path
+        else:                         # Use tensornet contraction path
             def _group_by_tensors(prim_lists, allow_singles=False):
                 prim_list_groups = {}
                 for prim_list in prim_lists:
@@ -153,8 +156,8 @@ class tensor_network(summable_tensor):
             timings_start()
             new_tens = primitive_tensor(self._backend.contract(*args), self._backend, self._contract)
             timings_record("backend.contract")
-            if _opt_einsum_dispatch:
-                return new_tens    # bottom out immediately
+            if _backend_contract_path:
+                return new_tens    # bottom out immediately ... there must be a more elegant way of switching between all these options!
             #
             timings_start()
             def _map_indices(prim_lists):
@@ -177,7 +180,7 @@ class tensor_network(summable_tensor):
                 scalar *= scalar_value(new_tens)    # in no way not a scalar (unlike a 1x1x1x... tensor).  note that new_tens itself is now forgotten
             timings_record("tensor_network._evaluate")
             return evaluate(tensor_network(scalar, new_contractions, new_free_indices, self._backend, self._contract))    # recur
-        else:    # must be a single tensor or an outer product
+        else:    # must be a single tensor (?) or an outer product
             if len(free_indices)>0:
                 timings_start()
                 mapping = {}
@@ -186,10 +189,9 @@ class tensor_network(summable_tensor):
                     if tens not in mapping:
                         mapping[tens] = [None]*len(by_id[tens].shape)
                     mapping[tens][pos] = i
-                if self._scalar!=1:
-                    raise RuntimeError("scalar should be 1, right?")
-                args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()]    # shouldnt self._scalar be 1 by now ... could just check and ignore
-                #args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()] + [self._scalar]    # shouldnt self._scalar be 1 by now ... could just check and ignore
+                if self._scalar!=1:                                     # eventually deprecate.
+                    raise RuntimeError("scalar should be 1, right?")    # pretty sure this has to be true
+                args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()]    # self._scalar is 1 by now?
                 timings_record("tensor_network._evaluate")
                 timings_start()
                 Z = primitive_tensor(self._backend.contract(*args), self._backend, self._contract)                     # bottom out (might give a 0-dim tensor; this is intended)

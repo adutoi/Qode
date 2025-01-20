@@ -16,11 +16,12 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .base     import evaluate, increment, raw, scalar_value, initialize_timer, print_timings
-from .tensors  import tensor_sum    # tensor_sum() can initialize an empty accumulator for += use
-from .tensors  import primitive_tensor as _primitive_tensor
-from .contract import contract      # the only way to build a tensor_network
-from .backends import dummy_backend, numpy_backend, tensorly_backend
+from .base           import evaluate, increment, raw, scalar_value, initialize_timer, print_timings
+from .tensors        import tensor_sum    # tensor_sum() can initialize an empty accumulator for += use
+from .tensors        import primitive_tensor as _primitive_tensor
+from .contract       import contract      # the only way to build a tensor_network
+from .backends       import dummy_backend, numpy_backend, tensorly_backend
+from .tensor_network import backend_contract_path
 
 def primitive_tensor_wrapper(backend, copy_data=False):
     def wrapper(raw_tensor):
