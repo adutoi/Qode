@@ -19,6 +19,10 @@
 import tensorly
 from ....util import timer
 
+from tensorly import tenalg
+tenalg.set_backend('einsum')
+from tensorly import plugins
+plugins.use_opt_einsum()	
 
 
 _timings = None

@@ -380,3 +380,32 @@ def lowest_eigen(H, v, thresh, dim=10, num=None, block_action=None, autocomplete
                 del vecs[n]
         B = len(vecs)
     return sorted(zip(frozen_vals,frozen_vecs), key=lambda p: p[0])	# return as list of eigenpair tuples sorted low to high
+
+def lowest_eigen_one_by_one(H, v_list, thresh, dim=10, num=None, block_action=None, autocomplete=False, converge_vectors=False):
+    """
+    This function handles a single eigenpair evaluation exactly the same as lowest_eigen, but for multiple eigenpairs
+    this function solves each eigenpair separately and then projects it out, as opposed to solving them all as one
+    as done in lowest_eigen, which highly increases the robustness of the solver.
+    """
+    debug = True
+    Bo = 1  #len(v)					# the initial block size (will shrink as vectors converge)
+    if (num is None) or (num>Bo):  num = Bo	# if not specified, assume we want one eigenvector per starting vector
+    if debug:  print("Entering lanczos.lowest_eigen with Bo={}, dim={}, num={}, block_action={}, autocomplete={}, and thresh={} ({}).".format(Bo,dim,num,block_action,autocomplete,thresh,"vectors" if converge_vectors else "values"))
+    frozen_vals = []			# store converged eigenvalues
+    frozen_vecs = vector_set(H.space)	# store converged eigenvectors
+    for v in v_list:
+        vals        = [float("inf")]*Bo	# initial guess at eigenvalues (guaranteed to force second iteration if eigenvalues tested)
+        vecs        = vector_set(H.space,[v])	# promote to a vector set
+        B = Bo
+        while B>Bo-num or min(vals or [float("inf")])<max(frozen_vals or [-float("inf")]):				# vecs will constantly be replaced, when desired converged vectors are removed, we stop
+            P = 1 - frozen_vecs.projection_opr()			# P projects out frozen vectors
+            vecs = vector_set(H.space, [ P|Vi for Vi in vecs ])	# If we make sure they are projected out here ... (will be nicer when P|vecs works, also _lowest_eigen enforces ON)
+            vals,vecs,errors = _lowest_eigen(P|H, vals, vecs, dim, block_action, autocomplete, converge_vectors, thresh) # ... then we only need P|H here and not P|H|P (b/c projectors are idempotnent, also block_action "fixed" at lower level)
+            for n,error in reversed(list(enumerate(errors))):	# loop backwards so that deletions do not change indexes looped over later in time (enumerate is not itself reversible)
+                if error<thresh:					# MOVE any converged vectors from vecs to frozen_vecs
+                    frozen_vals += [vals[n]]
+                    frozen_vecs += [vecs[n]]
+                    del vals[n]
+                    del vecs[n]
+            B = len(vecs)
+    return sorted(zip(frozen_vals,frozen_vecs), key=lambda p: p[0])	# return as list of eigenpair tuples sorted low to high
