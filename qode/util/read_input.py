@@ -1,4 +1,4 @@
-#    (C) Copyright 2018 Anthony D. Dutoi
+#    (C) Copyright 2018, 2023, 2025 Anthony D. Dutoi
 # 
 #    This file is part of Qode.
 # 
@@ -15,19 +15,28 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
+
+import inspect
+
 """\
-This module is dedicated to reading input out of python-syntax files that might just contain parameter definitions.
+This module is dedicated to reading input out of python-syntax files that might contain only direct parameter
+definitions or slightly more complex code aimed at defining parameters (there are no hardlimits on the code
+complexity, but at a certain point it might make using this untenably brittle).
 
-This has the dual benefits of making them quite flexible even without having to write a single line of parser code,
-but, at the same time, the contents can be completely limited to parameter declarations (no import statements or other
-"overhead"), even while the name of the file is dynamic (which cannot be accomplished easily using either imports of
-parameters from the main code, or imports of the main code from the parameter code).
+This has the dual benefits of making inputs quite flexible (especially for quick-and-dirty experiments concerning
+how to specify parameters in an input deck) without having to write even a single line of parser code, but, at the
+same time, the contents can be completely limited to parameter declarations (no need for import statements or other
+"overhead").  All of this is accomplished while keeping the name of the input file command-line dynamic (which cannot
+be accomplished easily using either imports of parameters from the main code, or imports of the main code from the
+parameter code).
 
-One of the more powerful aspects here is namespacing.  The user can import namespaces into the input file directly,
-but also the code that asks for the reading and execution of the input file can pass it its namespace dictionary
-(or any other namespace for that matter), making available names from other modules, or perhaps macros to lower
-the pain of writing input files.  Finally, there is an as-of-yet unused option of defining some kind of default
-namespaces (local to a module, or a class that calls the methods below?).
+One of the more powerful aspects here is namespacing.  The author of the input file can directly import names
+from any module it likes (includig from the package that it is germane to), but also the author of the driver
+code that accepts the input can have it excecuted in a custom namespace (which might just be its own namespace, 
+passed via the globals() function).  This can be used to make available automatically names from other modules,
+or perhaps specialized parser functions to lower the pain of writing input files.  Finally, a library of a common
+set of such functions might eventually accompany this module, and those functions could be imported into the
+executing namespace for convenience and uniformity.
 
 The only drawback is that any parser errors will come back in "pythonese" which will not make sense to many
 end users.  The proposed solution is another function (a plain text parser in the same module that defines input-level
@@ -45,13 +54,14 @@ class _dotdict(dict):
     Found at http://stackoverflow.com/questions/2352181/how-to-use-a-dot-to-access-members-of-dictionary,
     on 21.May.2015 courtesy of 'derek73'.
     """
-    def __getattr__(self,attr):  return self.get(attr)
-    __setattr__= dict.__setitem__
-    __delattr__= dict.__delitem__
+    def __getattr__(self, attr):
+        return self.get(attr)
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
 
 
 
-def from_string(string,write_to=None,namespace=None):
+def from_string(string, write_to=None, namespace=None):
     """\
     Takes a string containing python code and executes it using the global namespace given as an argument
     (to expose names in modules like math, without them having to be referenced or imported in the string).
@@ -59,20 +69,22 @@ def from_string(string,write_to=None,namespace=None):
     The identfiers in this space may be accessed using the . notation customary for builtin dictionaries.
     """
     if namespace is None:  namespace = globals()
+    if inspect.ismodule(namespace):
+        namespace = namespace.__dict__
     if write_to  is None:  write_to  = _dotdict({})
-    exec(string,namespace,write_to)
+    exec(string, namespace, write_to)
     return write_to
 
-def from_file(filename,write_to=None,namespace=None):
+def from_file(filename, write_to=None, namespace=None):
     """\
     Just a wrapper for read_input.from_string, but where the contents of an ASCII file are read as the string.
     """
-    return from_string(open(filename).read(),write_to,namespace)
+    return from_string(open(filename).read(), write_to, namespace)
 
-def from_argv(fields,write_to=None,namespace=None):
+def from_argv(fields, write_to=None, namespace=None):
     """\
     Just a wrapper for read_input.from_string, but where a list of statements is executed (such as would be found in argv with no space around = signs)
     """
     string = ""
     for field in fields:  string += field + '\n'
-    return from_string(string,write_to,namespace)
+    return from_string(string, write_to, namespace)
