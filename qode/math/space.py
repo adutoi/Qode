@@ -95,6 +95,10 @@ class _member(object):
             If the left-hand operand would be of vector or operator class, then __or__ for that class would take precedence. """
         if isinstance(other,(float,int,complex)):  return self*other					# calls __mul__ below (handles "0" case)
         else:                                      raise Exception('Illegal inner product with unknown object')
+    def __matmul__(self,other):
+        return self|other
+    def __rmatmul__(self,other):
+        return other|self
     def __iadd__(self,other):
         """ Handles v+=w, where w is another vector (perhaps 0). """
         if not is_int_zero(other):  self.space.traits.add_to(self,other)		# checks that both are _member class
@@ -194,6 +198,8 @@ class _operator_base(object):
         elif isinstance(other,(_operator_base,float,int,complex)):  return _composite_op(self,other,'|')
         else:                                                       return self.space.traits.act_on_vec(self,other)	# checks that other is _member class
     def __ror__(self,number):       return   self | number
+    def __matmul__(self,other):     return   self | other
+    def __rmatmul__(self,other):    return   other| self
     def __mul__(self,number):       return   self | number
     def __rmul__(self,number):      return   self | number
     def __truediv__(self,number):   return   self | (self.field(1)/number)
