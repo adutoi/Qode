@@ -25,11 +25,20 @@
 # >>> a = struct(attr1=arg1, attr2=arg2, attr3=arg3, ...)
 # >>> a.later = another
 # >>> (a.attr1 is arg1) and (a.later is another)    # True
+### everything between here and the next ### is deprecated and will go away if/when probationary code is accepted
 # >>> x, y = as_tuple(a("attr1", "attr2"))    # user determines order, can be a subset
-# >>> x, y = as_tuple(a("attr1 attr2"))       # same thing
+# >>> x, y = as_tuple(a("attr1 attr2"))       # same thing (consecutive whitespace treated as one)
+# >>> x, y = as_tuple(a("attr1,attr2"))       # same thing (commas replaced with whitespace before processing)
 # >>> f(*as_tuple(a("attr1 attr2")))          # trivial use- ...
 # >>> f(**as_dict(a("attr1 attr2")))          # ... case extension
 # >>> f(**as_dict(a))                         # This is completely safe/predictable if want all members
+### and it would be replaced with the following
+# >>> x, y = a("attr1", "attr2")    # user determines order, can be a subset
+# >>> x, y = a("attr1 attr2")       # same thing (consecutive whitespace treated as one)
+# >>> x, y = a("attr1,attr2")       # same thing (commas replaced with whitespace before processing)
+# >>> f(*a("attr1 attr2"))          # trivial use- ...
+# >>> f(**a("attr1 attr2"))         # ... case extension
+# >>> f(**a)                        # This is completely safe/predictable if want all members
 #
 # Another use is for one-off classes where field names (accessible via dot syntax) are predetermined:
 # >>> class data(struct):
@@ -51,7 +60,6 @@
 import itertools
 
 
-
 def as_tuple(to_tuple):
     return to_tuple._as_tuple()
 
@@ -59,8 +67,12 @@ def as_dict(to_dict):
     return to_dict._as_dict()
 
 class struct(object):
-    def __init__(self, **kwargs):                         # implicitly restricts allowed keys of internal dict
-        object.__setattr__(self, "_data_dict", kwargs)    # avoids circular recursion
+    def __init__(self, _other=None, **kwargs):    # implicitly restricts allowed keys of internal dict
+        if _other is None:
+            object.__setattr__(self, "_data_dict", kwargs)                     # avoids circular recursion (because _data_dict not yet set)
+        else:
+            object.__setattr__(self, "_data_dict", dict(_other._data_dict))    # avoids circular recursion (because _data_dict not yet set)
+            self._data_dict.update(kwargs)
     def __setattr__(self, attr, value):
         self._data_dict[attr] = value
         return value
@@ -79,18 +91,33 @@ class struct(object):
             del self._data_dict[attr]
         except KeyError:
             raise AttributeError(repr(attr))
+    def __eq__(self, other):
+        try:
+            result = (self._data_dict == other._data_dict)    # will work as least as well as python list/tuple/dict __eq__ (ie, if members have __eq__ defined, then recursive)
+        except:
+            result = False
+        return result
     def __call__(self, *attrs):    # allows the taking of a sub-namespace
-        attrs = [attr for attr in itertools.chain.from_iterable([attr.split(" ") for attr in attrs]) if attr!=""]
+        attrs = [attr for attr in itertools.chain.from_iterable([attr.replace(","," ").split(" ") for attr in attrs]) if attr!=""]
         kwargs = {attr:self._data_dict[attr] for attr in attrs}
         return struct(**kwargs)
     def __repr__(self):
         arguments = ", ".join("{}={}".format(k,repr(v)) for k,v in self._data_dict.items())
         return "{}({})".format(type(self).__name__, arguments)
+    ### code between here and the next ### will eventually is deprecated and will eventually be removed after probationary code accepted
     def _as_tuple(self):
         return tuple(self._data_dict.values())
     def _as_dict(self):
         return dict(self._data_dict)
-
+    ### the code between here and the end of the class is probationary (see usage notes above the class)
+    def __len__(self):
+        return len(self._data_dict)
+    def __iter__(self):
+        return iter(self._data_dict.values())
+    def __getitem__(self, item):
+        return self._data_dict[item]
+    def keys(self):
+        return self._data_dict.keys()
 
 
 # Implementation notes:
@@ -100,7 +127,7 @@ class struct(object):
 # Defining both __getattr__ and __getattribute__ makes no sense.  The built-in object class only
 # has __getattribute__ defined.  Conversely, __setattr__ and __setattribute__ cannot meaningfully
 # be different from each other, and so only __setattr__ is ever defined.  Second, when class
-# instances (henceforth, obj or objs, to distinguish them from the ojbect class) are pickled, the
+# instances (henceforth, obj or objs, to distinguish them from the object class) are pickled, the
 # class definitions (ie code for member functions) are not stored.  The fully qualified class name
 # (ie, including module) is stored, and the modules containing the definitions must be importable
 # later (this is so that old pickles can be loaded with updated code).  Only the data for the obj is 
