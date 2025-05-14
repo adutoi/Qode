@@ -17,14 +17,13 @@
 #
 import time
 import numpy
-from ..math        import sqrt
-from ..util.output import indent, indented, no_print, str_print
+from ...util.output import indent, indented, no_print, str_print
 
 
 
 class no_DIIS_class(object):
 	def __init__(self):                             pass
-	def __call__(self, x, Dx, iteration, textlog):  return (x + Dx), sqrt(Dx|Dx)	# same signature as __call__ of DIIS_controller
+	def __call__(self, x, Dx, iteration, textlog):  return (x + Dx), (Dx@Dx)**(1/2)    # same signature as __call__ of DIIS_controller
 	def print_info(self,textlog):                   pass
 no_DIIS = no_DIIS_class()
 
@@ -48,7 +47,7 @@ class DIIS_controller(object):
 		if iteration>=self._start:
 			new_x = self._do_DIIS(new_x, Dx, textlog)	# Modify step using linear regression
 			Dx = new_x - x
-			step_norm = sqrt(Dx|Dx)
+			step_norm = (Dx@Dx)**(1/2)
 		return new_x,step_norm
 	def print_info(self,textlog):
 		textlog("DIIS will be used to accelerate convergence.")
@@ -88,7 +87,7 @@ class DIIS_controller(object):
 		self._matrix.pop(0)
 		for column in self._matrix:  column.pop(0)
 	def _increment_matrix(self):
-		last_row = [ ( self._D[-1] | D ) for D in self._D ]
+		last_row = [ ( self._D[-1] @ D ) for D in self._D ]
 		self._matrix += [last_row]
 		for row,last_element in zip(self._matrix[:-1],last_row[:-1]):  row += [last_element]
 	def _compute_weights(self):
@@ -111,7 +110,7 @@ class Newton_step_class(object):
 		textlog(indent("Computing gradient and inverse Hessian ..."))
 		_, g0, invH0 = f(x0, value=False)		# The value (discarded), gradient and inverse of the Hessian
 		textlog(indent("Applying inverse Hessian to gradient ..."))
-		Dx = -invH0 | g0				# The simple QN step, if DIIS not used
+		Dx = -invH0 @ g0				# The simple QN step, if DIIS not used
 		return Dx
 Newton_step = Newton_step_class()
 
@@ -143,7 +142,7 @@ def Optimize(f, x0, thresh, step, diis=no_DIIS, textlog=print):
 		t_cycle = time.time()
 		x0 = x1								# Update ...
 		iteration += 1							# ... for next iteration.
-		step_norm /= sqrt(x0|x0)					# What fraction of present location was most recent step? (for convergence check)
+		step_norm /= (x0@x0)**(1/2)					# What fraction of present location was most recent step? (for convergence check)
 		textlog("Relative step norm = {:.3e}".format(step_norm))	# Inform user how close we are getting
 		textlog("Cycle Cumulative Time =", t_cycle - t_start)
 	textlog("==================================================================================")
