@@ -15,8 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
-
+import sys
 import inspect
+from . import struct
 
 """\
 This module is dedicated to reading input out of python-syntax files that might contain only direct parameter
@@ -31,7 +32,7 @@ be accomplished easily using either imports of parameters from the main code, or
 parameter code).
 
 One of the more powerful aspects here is namespacing.  The author of the input file can directly import names
-from any module it likes (includig from the package that it is germane to), but also the author of the driver
+from any module it likes (including from the package that it is germane to), but also the author of the driver
 code that accepts the input can have it excecuted in a custom namespace (which might just be its own namespace, 
 passed via the globals() function).  This can be used to make available automatically names from other modules,
 or perhaps specialized parser functions to lower the pain of writing input files.  Finally, a library of a common
@@ -48,19 +49,6 @@ does not like . . . try-except is also probably my friend in this battle.
 
 
 
-class _dotdict(dict):
-    """\
-    dot.notation access to dictionary attributes
-    Found at http://stackoverflow.com/questions/2352181/how-to-use-a-dot-to-access-members-of-dictionary,
-    on 21.May.2015 courtesy of 'derek73'.
-    """
-    def __getattr__(self, attr):
-        return self.get(attr)
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
-
-
-
 def from_string(string, write_to=None, namespace=None):
     """\
     Takes a string containing python code and executes it using the global namespace given as an argument
@@ -68,10 +56,10 @@ def from_string(string, write_to=None, namespace=None):
     The names defined inside the executed string are assigned to a namespace which is returned to the user.
     The identfiers in this space may be accessed using the . notation customary for builtin dictionaries.
     """
-    if namespace is None:  namespace = globals()
+    if namespace is None:  namespace = {}    # if allow None through, the namespace of this module is used when exec is called
     if inspect.ismodule(namespace):
-        namespace = namespace.__dict__
-    if write_to  is None:  write_to  = _dotdict({})
+        namespace = namespace.__dict__       # in case it is a module of defintions for the parsing of inputs
+    if write_to  is None:  write_to  = struct()
     exec(string, namespace, write_to)
     return write_to
 
@@ -88,3 +76,19 @@ def from_argv(fields, write_to=None, namespace=None):
     string = ""
     for field in fields:  string += field + '\n'
     return from_string(string, write_to, namespace)
+
+# This assumes that the command line is of the form
+#    executable <params.in.py> [tokens interpreted as lines to append to <params.in.py>]
+# If there are no defaults to define before parsing the parameters, then the simplest use is:
+#     params = read_input.from_command_line()
+# But if params is a pre-existing struct, either of the following will work
+#     params.update(read_input.from_command_line())
+#     read_input.from_command_line(write_to=params)
+# All of these could be modified similarly to the first line becoming
+#    params = read_input.from_command_line(namespace=parser_module)
+# where parser_module contains defintions expected to be available in the input file environment
+def from_command_line(write_to=None, namespace=None):
+    params = from_file(sys.argv[1],  write_to=write_to, namespace=namespace)
+    if len(sys.argv)>2:
+        from_argv(sys.argv[2:], write_to=params, namespace=namespace)
+    return params

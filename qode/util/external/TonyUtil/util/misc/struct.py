@@ -114,10 +114,16 @@ class struct(object):
         return len(self._data_dict)
     def __iter__(self):
         return iter(self._data_dict.values())
+    def __setitem__(self, item, value):    # needed to work with read_input
+        self._data_dict[item] = value
+        return value
     def __getitem__(self, item):
         return self._data_dict[item]
     def keys(self):
         return self._data_dict.keys()
+    def update(self, other):
+        return self._data_dict.update(other)
+
 
 
 # Implementation notes:

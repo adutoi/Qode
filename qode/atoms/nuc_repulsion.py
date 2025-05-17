@@ -27,9 +27,11 @@ energy_unit = constants.E_H	# In case the user needs it, this is the unit of ene
 def energy(atoms, distance_unit=constants.Ang):	# by default, geometries assumed to be in Angstrom
     in_AU = float(distance_unit/constants.a_0)
     repulsion = 0
-    for i,(X_i,(xi,yi,zi)) in enumerate(atoms):
+    for i,atom_i in enumerate(atoms):
+        X_i, (xi,yi,zi) = atom_i  #("element position")    # atom_i is a struct
         Z_i = atomic_number(X_i)
-        for X_j,(xj,yj,zj) in atoms[i+1:]:
+        for atom_j in atoms[i+1:]:
+            X_j, (xj,yj,zj) = atom_j  #("element position")    # atom_j is a struct
             Z_j = atomic_number(X_j)
             R = in_AU * math.sqrt((xj-xi)**2 + (yj-yi)**2 + (zj-zi)**2)
             repulsion += (Z_i * Z_j / R)

@@ -224,7 +224,9 @@ class AO_integrals(object):
     def _add_fragment(atoms, ghost=False):
         ghost = "@" if ghost else ""
         fragment = ""
-        for atom_id,(x,y,z) in atoms:  fragment += "{:s} {:.16f} {:.16f} {:.16f}\n".format(ghost+atom_id, x, y, z)
+        for atom in atoms:
+            element, (x,y,z) = atom  #("element position")    # atom is a struct
+            fragment += "{:s} {:.16f} {:.16f} {:.16f}\n".format(ghost+element, x, y, z)
         return fragment
     @staticmethod
     def _block_rule(ints_type, all_integrals, sort_keys):
