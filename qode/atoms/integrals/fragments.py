@@ -179,18 +179,18 @@ class Nuc_repulsion(object):
 
 
 class AO_integrals(object):
-    def __init__(self, fragments, integrals_engine=psi4_ints, rule_wrappers=None):
+    def __init__(self, fragments, integrals_engine=psi4_ints, rule_wrappers=None, printout=print):
         self.fragments = fragments
         frag_ids = keys(self.fragments)
         sort_keys = key_sorter(fragments)
         if rule_wrappers is None:  rule_wrappers = []
-        frag_calcs = dynamic_array([cached, AO_integrals._compute_rule(fragments, sort_keys, integrals_engine)], ranges=[None])	# definitely cache because so expensive and called repeatedly by arrays below ... no rule_wrappers because elements different in structure than those below
+        frag_calcs = dynamic_array([cached, AO_integrals._compute_rule(fragments, sort_keys, integrals_engine, printout)], ranges=[None])	# definitely cache because so expensive and called repeatedly by arrays below ... no rule_wrappers because elements different in structure than those below
         self.S   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("S", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids])		# caching not important because just block finder (and each grabbed only once to do fragMO transform)
         self.T   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("T", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids])
         self.U   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("U", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids,frag_ids])
         self.V   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("V", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
     @staticmethod
-    def _compute_rule(fragments, sort_keys, integrals_engine):
+    def _compute_rule(fragments, sort_keys, integrals_engine, printout):
         def the_integrals(frag_indices):
 
             start_time = timeit.default_timer()
@@ -207,17 +207,17 @@ class AO_integrals(object):
                     else:
                         if frag.basis.AOcode!=basis:  raise AssertionError("right now, all fragments must have the same basis")	# see also, warning at top of file
                     geometry += AO_integrals._add_fragment(frag.atoms, ghost=(i!=j))
-                S, T, Ui, V, _ = integrals_engine.AO_ints(geometry, basis, NucPotentialOnly=True)
+                S, T, Ui, V, _ = integrals_engine.AO_ints(geometry, basis, NucPotentialOnly=True, printout=printout)
                 U += [Ui]
 
             elapsed = timeit.default_timer() - start_time
-            print('elapsed time (after integrals loops) =', elapsed, flush=True)
+            printout('elapsed time (after integrals loops) =', elapsed, flush=True)
 
-            S, T, _, V, _ = integrals_engine.AO_ints(geometry, basis)	# relies on most recent geometry from loop above
+            S, T, _, V, _ = integrals_engine.AO_ints(geometry, basis, printout=printout)	# relies on most recent geometry from loop above
             return {"S":block_2(S,subsystem), "T":block_2(T,subsystem), "U":block_last2(U,subsystem), "V":block_4(V,subsystem)}
 
             elapsed = timeit.default_timer() - start_time
-            print('elapsed time (after second int call) =', elapsed, flush=True)
+            printout('elapsed time (after second int call) =', elapsed, flush=True)
 
         return the_integrals
     @staticmethod

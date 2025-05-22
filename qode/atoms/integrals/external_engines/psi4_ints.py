@@ -2,7 +2,7 @@ import numpy
 import psi4
 import timeit
 
-def brabraketket(braketbraket):
+def brabraketket(braketbraket, printout=print):
     start_time = timeit.default_timer()
     n_orb = braketbraket.shape[0]
     V = numpy.zeros((n_orb, n_orb, n_orb, n_orb))
@@ -12,7 +12,7 @@ def brabraketket(braketbraket):
                 for s in range(n_orb):
                     V[p,q,r,s] = braketbraket[p,r,q,s]
     elapsed = timeit.default_timer() - start_time
-    print('elapsed time (brabraketket function) =', elapsed)
+    printout('elapsed time (brabraketket function) =', elapsed)
     return V
 
 class supplementary(object):
@@ -21,11 +21,11 @@ class supplementary(object):
 
 n_calls = 0
 
-def AO_ints(geometry, basis, max_mem=1e9, NucPotentialOnly=False):
+def AO_ints(geometry, basis, max_mem=1e9, NucPotentialOnly=False, printout=print):
     start_time = timeit.default_timer()
     global n_calls
     n_calls += 1
-    print("Integrals call #:", n_calls, flush=True)
+    printout("Integrals call #:", n_calls, flush=True)
     mol  = psi4.geometry(geometry)
     mol.update_geometry()
     if basis.startswith("CUSTOM\n"):
@@ -48,12 +48,7 @@ def AO_ints(geometry, basis, max_mem=1e9, NucPotentialOnly=False):
         S = numpy.array(ints.ao_overlap())
         U = numpy.array(ints.ao_potential())
         T = numpy.array(ints.ao_kinetic())
-        V = brabraketket(numpy.array(ints.ao_eri()))
+        V = brabraketket(numpy.array(ints.ao_eri()), printout)
     elapsed = timeit.default_timer() - start_time
-    print('elapsed time (call to integrals {}) ='.format(n_calls), elapsed)
+    printout('elapsed time (call to integrals {}) ='.format(n_calls), elapsed)
     return S,T,U,V,supplementary(mol,bas,ints)
-
-
-
-
-
