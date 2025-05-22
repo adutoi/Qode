@@ -27,6 +27,8 @@ class _auxilliary(object):
     def basis_vec(self, occupied):
         v = numpy.zeros(len(self.parent.configs), dtype=Double.numpy, order="C")
         i = field_op.find_index_by_occ(occupied, self.parent.configs)
+        if i==-1:
+            raise RuntimeError("requested basis state is not a member of the set of allowed configurations")
         v[i] = 1
         return v
     def complete_basis(self):
@@ -72,4 +74,4 @@ class CI_space_traits(object):
         return [ op(v, self.configs) for v in v_block ]
     @staticmethod
     def dot_vec_blocks(v_block,w_block):
-        return numpy.array([[CI_space_traits_class.dot(v,w) for v in v_block] for w in w_block])
+        return numpy.array([[CI_space_traits.dot(v,w) for v in v_block] for w in w_block])
