@@ -17,6 +17,7 @@
 #
 import time
 import numpy
+from ..util      import indented
 from .space      import conjugate, sqrt, linear_inner_product_space
 from .vector_set import vector_set
 
@@ -24,7 +25,7 @@ from .vector_set import vector_set
 
 
 
-def _process_new_vec(v,vX,b,reorthonormalize):
+def _process_new_vec(v,vX,b,reorthonormalize, printout=print):
     """\
     This function finishes one iteration in building the following matrix
     projection of a Hermitian linear operator H, per the band-Lanczos algorithm,
@@ -77,11 +78,11 @@ def _process_new_vec(v,vX,b,reorthonormalize):
     for n in range(1,B+1):  b_nX += [conjugate(b[B-n][-n])]
     # orthogonalize:  |X~>   =   |X~~> - sum_{n=1 to 2B} |-n><-n|X~~>   =   |X~~> - sum_{n=1 to 2B} |-n>b_nX
     for n in range(1,2*B+1):
-        if debug:  print("|X~~> -= {} |-{}>".format(b_nX[n],n))
+        if debug:  printout("|X~~> -= {} |-{}>".format(b_nX[n],n))
         vX -= b_nX[n] * v[-n]
     # compute final subdiagonal:  b_0X = <X|H|-B> = sqrt(<X~|X~>)
     b_nX[0] = sqrt(vX|vX)
-    if debug:  print("Old subdiagonals and new additions:\n",b,"\n",b_nX)
+    if debug:  printout("Old subdiagonals and new additions:\n",b,"\n",b_nX)
     # normalize:  |X> = |X~> / sqrt(<X~|X~>)
     vX /= b_nX[0]
     # optional Gram-Schmidt
@@ -92,7 +93,7 @@ def _process_new_vec(v,vX,b,reorthonormalize):
     for n in range(B+1):  b[n] += [b_nX[n]]
     v += [vX]
 
-def _iteration(H,v,b,reorthonormalize):
+def _iteration(H,v,b,reorthonormalize, printout=print):
     """\
     This function performs one iteration in building the matrix described in
     _process_new_vec.  It performs the action of a linear operator H onto the
@@ -104,17 +105,17 @@ def _iteration(H,v,b,reorthonormalize):
     debug = False
     B = len(b) - 1	# block size
     if debug:
-        print("Entering lanczos._iteration with B={}, reorthonormalize={}.".format(B,reorthonormalize))
-        print("Vector addresses:\n",list(v))
+        printout("Entering lanczos._iteration with B={}, reorthonormalize={}.".format(B,reorthonormalize))
+        printout("Vector addresses:\n",list(v))
     # create:  |X~~> = H|-B>
     vX = H | v[-B]					# This is the most expensive step.
     _process_new_vec(v,vX,b,reorthonormalize)
     if debug:
-        print("New subdiagonals:\n",b)
-        print("New vector addresses:\n",list(v))
-        print("Exiting lanczos._iteration")
+        printout("New subdiagonals:\n",b)
+        printout("New vector addresses:\n",list(v))
+        printout("Exiting lanczos._iteration")
 
-def _block_iteration(H,v,b,n,reorthonormalize):
+def _block_iteration(H,v,b,n,reorthonormalize, printout=print):
     """\
     This function performs n iterations in building the matrix described in
     _process_new_vec.  It performs the action of a linear operator H onto the
@@ -127,19 +128,19 @@ def _block_iteration(H,v,b,n,reorthonormalize):
     B = len(b) - 1	# block size
     if n>B:  raise Exception("block action cannot exceed size of initial Lanczos block")	# should never happen, since only called from other functions in here
     if debug:
-        print("Entering lanczos._block_iteration with B={}, n={}, reorthonormalize={}.".format(B,n,reorthonormalize))
-        print("Vector addresses:\n",list(v))
+        printout("Entering lanczos._block_iteration with B={}, n={}, reorthonormalize={}.".format(B,n,reorthonormalize))
+        printout("Vector addresses:\n",list(v))
     # create:  |X~~> = H|Y> for Y in (-B ... -B+n-1)
     vX = H.act_on_vec_block(v[-B:(-B+n or None)])						# Someday wan this to be    vX = H | v[-B:(-B+n or None)] ... for that, space needs to understand vector_sets as well as vectors
     for vXi in vX:  _process_new_vec(v,vXi,b,reorthonormalize)
     if debug:
-        print("New subdiagonals:\n",b)
-        print("New vector addresses:\n",list(v))
-        print("Exiting lanczos._block_iteration")
+        printout("New subdiagonals:\n",b)
+        printout("New vector addresses:\n",list(v))
+        printout("Exiting lanczos._block_iteration")
 
 
 
-def projection(H,v,n,block_action=None,save=True,autocomplete=False,reorthonormalize=True):
+def projection(H,v,n,block_action=None,save=True,autocomplete=False,reorthonormalize=True, printout=print):
     """\
     This function builds and returns a square matrix projection of the linear operator H
     as a numpy matrix of dimension n x n, given a starting block of B orthonormal vectors v.
@@ -163,7 +164,7 @@ def projection(H,v,n,block_action=None,save=True,autocomplete=False,reorthonorma
     v = list(v)			# might come in as any iterable ... also do not want to touch original list (though contents may change due to initial Gram-Schmidt)
     B = len(v)			# block size
     if (block_action is not None) and (block_action>B):  block_action = B	# make sure we never try to act on more vectors than allowed
-    if debug:  print("Entering lanczos.projection with B={}, n={}, block_action={}, save={}, autocomplete={}, and reorthonormalize={}.".format(B,n,block_action,save,autocomplete,reorthonormalize))
+    if debug:  printout("Entering lanczos.projection with B={}, n={}, block_action={}, save={}, autocomplete={}, and reorthonormalize={}.".format(B,n,block_action,save,autocomplete,reorthonormalize))
     # Enforce orthonormality of input block
     for i,Vi in enumerate(v):
         for Vj in v[:i]:  Vi -= Vj * (Vj|Vi)
@@ -175,26 +176,26 @@ def projection(H,v,n,block_action=None,save=True,autocomplete=False,reorthonorma
         zeros += [0]
         b = [list(zeros)] + b		# "Extra" elements here are expected to exist in a "dumb" iteration (and need to copy list) ...
     v = vector_set(H.space, zeros+v)	#  ... does not know difference between beginning and middle. (zeros interpreted here as vectors)
-    if debug:  print("Subdiagonals (first array is lowest band, last array is diagonal band):\n",b)
+    if debug:  printout("Subdiagonals (first array is lowest band, last array is diagonal band):\n",b)
     # execute fixed number of recursions to populate b and (possibly) v
     if block_action is None:
        for i in range(n):
             _iteration(H,v,b,reorthonormalize)         # In practice, there are too many cases where reorthonormalization is necessary for stability
-            if debug and save:  print("Deviation from ON:", v[B:].orthonormality())
+            if debug and save:  printout("Deviation from ON:", v[B:].orthonormality())
             if not save:  del v[0]                     # Release oldest vector, if not saving.
     else:
        bigN = n // block_action		# How many times to produce block_action number of new vectors
        liln = n - bigN*block_action	# The remainder to bring the total number of vectors up to n
        for i in range(bigN):
            _block_iteration(H,v,b,block_action,reorthonormalize)
-           if debug and save:  print("Deviation from ON:", v[B:].orthonormality())
+           if debug and save:  printout("Deviation from ON:", v[B:].orthonormality())
            if not save:  del v[:block_action]              # Release oldest vectors, if not saving.
        if liln>0:
            _block_iteration(H,v,b,liln,reorthonormalize)
-           if debug and save:  print("Deviation from ON:", v[B:].orthonormality())
+           if debug and save:  printout("Deviation from ON:", v[B:].orthonormality())
            if not save:  del v[:liln]                      # Release oldest vectors, if not saving.
     if save:  del v[:B]                                    # If not saved, all implicitly destroyed on return, but these are meaningless.
-    if debug:  print("Vector addresses:\n",list(v))
+    if debug:  printout("Vector addresses:\n",list(v))
     # populate a band diagonal matrix from b
     if autocomplete:     # Perhaps extend dimensionality by B and approximate lower-right block
         n += B
@@ -204,16 +205,16 @@ def projection(H,v,n,block_action=None,save=True,autocomplete=False,reorthonorma
     for i in range(n):  pHp[i,i] = b[B][i]
     for i in range(1,B+1):
         for j in range(n-i):
-            if debug:  print("pHp[{r},{c}] = pHp[{r},{c}]* = {b}".format(r=j+i,c=j,b=b[B-i][i+j]))
+            if debug:  printout("pHp[{r},{c}] = pHp[{r},{c}]* = {b}".format(r=j+i,c=j,b=b[B-i][i+j]))
             pHp[j+i,j] = b[B-i][i+j]
             pHp[j,j+i] = conjugate(b[B-i][i+j])
-    if debug:  print("Finished projection:\n",pHp)
+    if debug:  printout("Finished projection:\n",pHp)
     # return the band diagonal matrix, and, perhaps, the Lanczos vectors
     if save:  value = (pHp,v)
     else:     value =  pHp
     return value
 
-def projection_eval_decomp(H, vecs, dim=10, block_action=None, autocomplete=False):
+def projection_eval_decomp(H, vecs, dim=10, block_action=None, autocomplete=False, printout=print):
     """\
     Given a list (iterable type) of B orthonormal starting vectors in vecs, this function builds a
     square matrix projection of the linear operator H with dimension B*dim x B*dim, and it returns
@@ -232,7 +233,7 @@ def projection_eval_decomp(H, vecs, dim=10, block_action=None, autocomplete=Fals
     """
     debug = False	# Set to true to turn on verbose printing
     B = len(vecs)	# block size
-    if debug:  print("Entering lanczos.projection_eval_decomp with B={}, dim={}, block_action={}, and autocomplete={}.".format(B,dim,block_action,autocomplete))
+    if debug:  printout("Entering lanczos.projection_eval_decomp with B={}, dim={}, block_action={}, and autocomplete={}.".format(B,dim,block_action,autocomplete))
     # Lanczos projection of H with fixed dimension dim*B, and the vector set spanning the space of the projection
     # Use reorthonormalize=True because we explicitly want vectors and so need to be able to trust them.
     pHp,lanczos_vecs = projection(H, vecs, dim*B, block_action=block_action, save=True, autocomplete=autocomplete, reorthonormalize=True)	# "fixes" non-ON vecs or too large block_action
@@ -241,7 +242,7 @@ def projection_eval_decomp(H, vecs, dim=10, block_action=None, autocomplete=Fals
     eigen_vals,eigen_vecs = zip(*sorted(zip( eigen_vals, eigen_vecs.T.tolist() ),key=lambda p: p[0]))
     return eigen_vals,eigen_vecs,lanczos_vecs
 
-def projection_lowest_eigen(H, vecs, dim=10, block_action=None, autocomplete=False):
+def projection_lowest_eigen(H, vecs, dim=10, block_action=None, autocomplete=False, printout=print):
     """\
     Given a list (iterable type) of B orthonormal starting vectors in vecs, this function builds a
     square matrix projection of the linear operator H with dimension B*dim x B*dim, and it returns
@@ -260,7 +261,7 @@ def projection_lowest_eigen(H, vecs, dim=10, block_action=None, autocomplete=Fal
     """
     debug = False	# Set to true to turn on verbose printing
     B = len(vecs)	# block size
-    if debug:  print("Entering lanczos.projection_lowest_eigen with B={}, dim={}, block_action={}, and autocomplete={}.".format(B,dim,block_action,autocomplete))
+    if debug:  printout("Entering lanczos.projection_lowest_eigen with B={}, dim={}, block_action={}, and autocomplete={}.".format(B,dim,block_action,autocomplete))
     # Get the eigenvalue decomposition of the projection and the lanczos basis vectors
     eigen_vals, eigen_vecs, lanczos_vecs = projection_eval_decomp(H, vecs, dim, block_action=block_action, autocomplete=autocomplete)		# "fixes" non-ON vecs or too large block_action
     # Build the lowest B eigenvectors in the orginal full space
@@ -269,7 +270,7 @@ def projection_lowest_eigen(H, vecs, dim=10, block_action=None, autocomplete=Fal
     new_vals = eigen_vals[:B]
     return new_vals, new_vecs
 
-def _lowest_eigen(H, vals, vecs, dim, block_action, autocomplete, converge_vectors, thresh):
+def _lowest_eigen(H, vals, vecs, dim, block_action, autocomplete, converge_vectors, thresh, printout=print):
     """\
     This is a helper function that extracts one (or more, read on) eigenpairs from the linear operator H,
     given B orthonormal starting vectors in vecs, which is a vector_set.  Orthonormality of the input vecs
@@ -298,7 +299,7 @@ def _lowest_eigen(H, vals, vecs, dim, block_action, autocomplete, converge_vecto
     """
     debug = True			# Set to true to turn on verbose printing
     B = len(vecs)			# block size
-    if debug:  print("Entering lanczos._lowest_eigen with B={}, vals={}, dim={}, block_action={}, autocomplete={}, and thresh={} ({}).".format(B,vals,dim,block_action,autocomplete,thresh,"vectors" if converge_vectors else "values"))
+    if debug:  printout("Entering lanczos._lowest_eigen with B={}, vals={}, dim={}, block_action={}, autocomplete={}, and thresh={} ({}).".format(B,vals,dim,block_action,autocomplete,thresh,"vectors" if converge_vectors else "values"))
     # Repeatedly diagonalize projections until convergence
     errors = [float("inf")]*B
     t0 = time.time()
@@ -318,14 +319,14 @@ def _lowest_eigen(H, vals, vecs, dim, block_action, autocomplete, converge_vecto
         # admin
         t1 = time.time()
         if debug:
-            print("Lanczos iteration {}:  Eigenvalues = {}\nerrors = {}".format(iteration,vals,errors))
-            print('cycle time =', t1 - t0)
+            printout("Lanczos iteration {}:  Eigenvalues = {}\nerrors = {}".format(iteration,vals,errors))
+            printout('cycle time =', t1 - t0)
         t0 = t1
         iteration += 1
     # Give the resulting eigensolutions and their distances from convergence
     return vals,vecs,errors
 
-def lowest_eigen(H, v, thresh, dim=10, num=None, block_action=None, autocomplete=False, converge_vectors=False):
+def lowest_eigen(H, v, thresh, dim=10, num=None, block_action=None, autocomplete=False, converge_vectors=False, printout=print):
     """\
     This function uses the iterative Lanczos method to extract the lowest num eigenpairs from a linear operator H,
     given B orthonormal initial guess vectors supplied in a list v (actually any iterable sequence).  Orthonormality
@@ -362,7 +363,7 @@ def lowest_eigen(H, v, thresh, dim=10, num=None, block_action=None, autocomplete
     debug = True
     Bo = len(v)					# the initial block size (will shrink as vectors converge)
     if (num is None) or (num>Bo):  num = Bo	# if not specified, assume we want one eigenvector per starting vector
-    if debug:  print("Entering lanczos.lowest_eigen with Bo={}, dim={}, num={}, block_action={}, autocomplete={}, and thresh={} ({}).".format(Bo,dim,num,block_action,autocomplete,thresh,"vectors" if converge_vectors else "values"))
+    if debug:  printout("Entering lanczos.lowest_eigen with Bo={}, dim={}, num={}, block_action={}, autocomplete={}, and thresh={} ({}).".format(Bo,dim,num,block_action,autocomplete,thresh,"vectors" if converge_vectors else "values"))
     frozen_vals = []			# store converged eigenvalues
     frozen_vecs = vector_set(H.space)	# store converged eigenvectors
     vals        = [float("inf")]*Bo	# initial guess at eigenvalues (guaranteed to force second iteration if eigenvalues tested)
@@ -371,7 +372,7 @@ def lowest_eigen(H, v, thresh, dim=10, num=None, block_action=None, autocomplete
     while B>Bo-num or min(vals or [float("inf")])<max(frozen_vals or [-float("inf")]):				# vecs will constantly be replaced, when desired converged vectors are removed, we stop
         P = 1 - frozen_vecs.projection_opr()			# P projects out frozen vectors
         vecs = vector_set(H.space, [ P|Vi for Vi in vecs ])	# If we make sure they are projected out here ... (will be nicer when P|vecs works, also _lowest_eigen enforces ON)
-        vals,vecs,errors = _lowest_eigen(P|H, vals, vecs, dim, block_action, autocomplete, converge_vectors, thresh) # ... then we only need P|H here and not P|H|P (b/c projectors are idempotnent, also block_action "fixed" at lower level)
+        vals,vecs,errors = _lowest_eigen(P|H, vals, vecs, dim, block_action, autocomplete, converge_vectors, thresh, printout=indented(printout)) # ... then we only need P|H here and not P|H|P (b/c projectors are idempotnent, also block_action "fixed" at lower level)
         for n,error in reversed(list(enumerate(errors))):	# loop backwards so that deletions do not change indexes looped over later in time (enumerate is not itself reversible)
            if error<thresh:					# MOVE any converged vectors from vecs to frozen_vecs
                 frozen_vals += [vals[n]]
@@ -381,7 +382,7 @@ def lowest_eigen(H, v, thresh, dim=10, num=None, block_action=None, autocomplete
         B = len(vecs)
     return sorted(zip(frozen_vals,frozen_vecs), key=lambda p: p[0])	# return as list of eigenpair tuples sorted low to high
 
-def lowest_eigen_one_by_one(H, v_list, thresh, dim=10, num=None, block_action=None, autocomplete=False, converge_vectors=False):
+def lowest_eigen_one_by_one(H, v_list, thresh, dim=10, num=None, block_action=None, autocomplete=False, converge_vectors=False, printout=print):
     """
     This function handles a single eigenpair evaluation exactly the same as lowest_eigen, but for multiple eigenpairs
     this function solves each eigenpair separately and then projects it out, as opposed to solving them all as one
@@ -390,7 +391,7 @@ def lowest_eigen_one_by_one(H, v_list, thresh, dim=10, num=None, block_action=No
     debug = True
     Bo = 1  #len(v)					# the initial block size (will shrink as vectors converge)
     if (num is None) or (num>Bo):  num = Bo	# if not specified, assume we want one eigenvector per starting vector
-    if debug:  print("Entering lanczos.lowest_eigen with Bo={}, dim={}, num={}, block_action={}, autocomplete={}, and thresh={} ({}).".format(Bo,dim,num,block_action,autocomplete,thresh,"vectors" if converge_vectors else "values"))
+    if debug:  printout("Entering lanczos.lowest_eigen with Bo={}, dim={}, num={}, block_action={}, autocomplete={}, and thresh={} ({}).".format(Bo,dim,num,block_action,autocomplete,thresh,"vectors" if converge_vectors else "values"))
     frozen_vals = []			# store converged eigenvalues
     frozen_vecs = vector_set(H.space)	# store converged eigenvectors
     for v in v_list:
@@ -400,7 +401,7 @@ def lowest_eigen_one_by_one(H, v_list, thresh, dim=10, num=None, block_action=No
         while B>Bo-num or min(vals or [float("inf")])<max(frozen_vals or [-float("inf")]):				# vecs will constantly be replaced, when desired converged vectors are removed, we stop
             P = 1 - frozen_vecs.projection_opr()			# P projects out frozen vectors
             vecs = vector_set(H.space, [ P|Vi for Vi in vecs ])	# If we make sure they are projected out here ... (will be nicer when P|vecs works, also _lowest_eigen enforces ON)
-            vals,vecs,errors = _lowest_eigen(P|H, vals, vecs, dim, block_action, autocomplete, converge_vectors, thresh) # ... then we only need P|H here and not P|H|P (b/c projectors are idempotnent, also block_action "fixed" at lower level)
+            vals,vecs,errors = _lowest_eigen(P|H, vals, vecs, dim, block_action, autocomplete, converge_vectors, thresh, printout=indented(printout)) # ... then we only need P|H here and not P|H|P (b/c projectors are idempotnent, also block_action "fixed" at lower level)
             for n,error in reversed(list(enumerate(errors))):	# loop backwards so that deletions do not change indexes looped over later in time (enumerate is not itself reversible)
                 if error<thresh:					# MOVE any converged vectors from vecs to frozen_vecs
                     frozen_vals += [vals[n]]

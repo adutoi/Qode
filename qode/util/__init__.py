@@ -19,7 +19,8 @@ from .external      import struct, as_tuple, as_dict, units, constants, recursiv
 from .printfunc     import printline
 from .numpy_mat_vec import random_matrix, basis_vector, zero_vector
 from .parallel      import parallelize_task
-from .output        import textlog, output, indent, indented
+from .output        import textlog, output, indent #, indented      # eventually, this should be completely deprecated ...
+from .textlogNEW    import indented, logger, no_print, str_print    # ... and this module should just be called textlog
 from .sort_eigen    import sort_eigen
 from .quiet         import quiet
 from .timer         import timer
