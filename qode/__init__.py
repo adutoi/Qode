@@ -17,4 +17,3 @@
 #
 from . import util
 from . import math
-from . import fermion_field
