@@ -17,7 +17,7 @@
 #
 
 import numpy
-from ..util.PyC import Double
+from ...util.PyC import Double
 from . import field_op
 
 

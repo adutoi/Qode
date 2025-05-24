@@ -18,3 +18,4 @@
 from .hierarchical_fluctuations import nested_operator
 from .hierarchical_fluctuations import local_operator
 from .coupled_cluster import CCSD
+from . import fermion_field

@@ -20,6 +20,22 @@ import numpy
 
 
 
+def dn_up_elec(n_elec, Sz):
+    n_extra_up = round(2*Sz)
+    if abs(n_extra_up - 2*Sz)>1e-12:     # hard-coded threshhold here probably ok
+        raise("Sz value given was not a half-integer")
+    n_elec_even = n_elec - n_extra_up    # yes, this all works if Sz<0, too
+    if n_elec_even%2!=0:
+        raise("Sz value not compatible with number of electrons")
+    n_elec_dn =              n_elec_even//2
+    n_elec_up = n_extra_up + n_elec_even//2
+    return n_elec_dn, n_elec_up
+
+def combine_orb_lists(orbs_A, orbs_B, n_orbs_A):
+    return list(orbs_A) + [n_orbs_A+p for p in orbs_B]
+
+
+
 def all_configs(num_tot_orb, num_active_elec, frozen_occ_orbs=None, frozen_vrt_orbs=None):
     def recur_all_configs(active_orbs, num_active_elec, static_config):
         configs = []
@@ -40,6 +56,12 @@ def all_configs(num_tot_orb, num_active_elec, frozen_occ_orbs=None, frozen_vrt_o
         elif p not in frozen_vrt_orbs:
             active_orbs += [p]
     return recur_all_configs(active_orbs, num_active_elec, static_config)
+
+#def Sz_configs(n_spatial, n_elec, Sz, core):
+def Sz_configs(n_spatial, n_elec_dn, n_elec_up, core):
+    dn_configs = all_configs(n_spatial, n_elec_dn-len(core), frozen_occ_orbs=core)
+    up_configs = all_configs(n_spatial, n_elec_up-len(core), frozen_occ_orbs=core)
+    return dn_configs, up_configs
 
 # The list of configs is interpreted as belonging to multiple systems, divided according to
 # sysA_low_orbs, which gives the lowest-indexed orbital of each system (except for the last

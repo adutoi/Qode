@@ -17,3 +17,5 @@
 #
 from . import util
 from . import math
+from . import many_body
+from . import atoms

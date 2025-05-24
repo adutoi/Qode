@@ -16,7 +16,7 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 import numpy
-from ..util.PyC import Double
+from ...util.PyC import Double
 from . import field_op
 
 

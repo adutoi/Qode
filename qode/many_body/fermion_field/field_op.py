@@ -17,7 +17,7 @@
 #
 import math
 import numpy
-from ..util.PyC import import_C, Int, Double, BigInt
+from ...util.PyC import import_C, Int, Double, BigInt
 
 # Import the C module in a python wrapper for external aesthetics and to avoid having compile
 # flags in multiple places (which points to a weakness in PyC that changing these does not

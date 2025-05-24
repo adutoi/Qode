@@ -17,6 +17,7 @@
 #
 
 from .CI_space_traits import CI_space_traits
-from . import configurations
 from . import field_op
-from . import field_op_ham
+from .field_op_ham    import Hamiltonian
+from .configurations  import dn_up_elec, combine_orb_lists, all_configs, Sz_configs, decompose_configs, recompose_configs, config_combination, tensor_product_configs, print_configs
+from . import CI_methods
