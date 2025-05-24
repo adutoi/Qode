@@ -25,29 +25,27 @@ from . import configurations
 
 
 def monomer_configs(frag, Sz=0):
-    n_spatial = frag.basis.n_spatial_orb
-    n_elec_dn, n_elec_up = configurations.dn_up_elec(frag.n_elec_ref, Sz)
-    dn_configs, up_configs = configurations.Sz_configs(n_spatial, n_elec_dn, n_elec_up, frag.basis.core)
-    return configurations.tensor_product_configs([dn_configs,up_configs], [n_spatial,n_spatial])
+    configs, _ = configurations.Sz_configs(frag.basis.n_spatial_orb, frag.n_elec_ref, Sz, frag.basis.core)
+    return configs    # just need complete spin-orbital configs
 
 def dimer_configs(frag0, frag1, Sz=0):
     n_spatial_0 = frag0.basis.n_spatial_orb
     n_spatial_1 = frag1.basis.n_spatial_orb
     n_spatial   = n_spatial_0 + n_spatial_1
-    core        = configurations.combine_orb_lists(frag0.basis.core, frag1.basis.core, n_spatial_0)
+    core        = configurations.combine_orb_lists(frag0.basis.core, frag1.basis.core, n_spatial_0)    # core in dimer spatial-orb representation
 
-    n_elec_dn,  n_elec_up  = configurations.dn_up_elec(frag0.n_elec_ref + frag1.n_elec_ref, Sz)
-    dn_configs, up_configs = configurations.Sz_configs(n_spatial, n_elec_dn, n_elec_up, core)
-    dn_configs_decomp = configurations.decompose_configs(dn_configs, [n_spatial_0, n_spatial_1])
-    up_configs_decomp = configurations.decompose_configs(up_configs, [n_spatial_0, n_spatial_1])
+    _, (dn_configs, up_configs) = configurations.Sz_configs(n_spatial, frag0.n_elec_ref+frag1.n_elec_ref, Sz, core)    # get individual spin-dn/up configs
+    dn_configs_decomp = configurations.decompose_configs(dn_configs, [n_spatial_0, n_spatial_1])    # break spin-dn/up configurations into fragments ...
+    up_configs_decomp = configurations.decompose_configs(up_configs, [n_spatial_0, n_spatial_1])    # ... Gives nested representation, with frag1 as slow index
 
+    # To understand the order/structure of this looping, it may be helpful to see the notes in __init__.py
     nested = []
     combine_configs = configurations.config_combination([n_spatial_1, n_spatial_1])
-    for dn_config_1,dn_configs_0 in dn_configs_decomp:
-        for up_config_1,up_configs_0 in up_configs_decomp:
-            config_1  = combine_configs([up_config_1, dn_config_1])
-            configs_0 = configurations.tensor_product_configs([up_configs_0, dn_configs_0], [n_spatial_0, n_spatial_0])
-            nested += [(config_1, configs_0)]
+    for up_configs_0,up_config_1 in dn_configs_decomp:        # loop over all (frag-decomposed) combinations of spin-up ...
+        for dn_configs_0,dn_config_1 in up_configs_decomp:    # ... and spin-down configurations (spin-up first because these are high-order bits)
+            configs_0 = configurations.tensor_product_configs([dn_configs_0, up_configs_0], [n_spatial_0, n_spatial_0])    # a list of configs
+            config_1  = combine_configs([dn_config_1, up_config_1])                                                        # a single config
+            nested += [(configs_0, config_1)]
     configs = configurations.recompose_configs(nested, [2*n_spatial_0, 2*n_spatial_1])
 
     return configs, nested

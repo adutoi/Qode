@@ -32,6 +32,8 @@ antisymm = import_C("antisymm", flags="-O3")
 
 
 
+# For understanding the insides of the functions below, it may be helpful to see the notes in __init__.py
+
 orbs_per_configint = field_op.orbs_per_configint()
 
 class packed_configs(object):

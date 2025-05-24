@@ -15,12 +15,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
-
 import numpy
 from ...util.PyC import Double
 from . import field_op
-
-
 
 class Hamiltonian(object):
     def __init__(self, h, V, thresh=1e-10, n_elec=None, n_threads=1):    # n_elec is a requirement to use wisdom, but need not be well-defined in general
