@@ -297,7 +297,7 @@ def _lowest_eigen(H, vals, vecs, dim, block_action, autocomplete, converge_vecto
     at least one of the errors will be less than thresh.  These are not sorted, but each is in the same order.  
     vecs is returned as a vector_set.
     """
-    debug = True			# Set to true to turn on verbose printing
+    debug = False			# Set to true to turn on verbose printing
     B = len(vecs)			# block size
     if debug:  printout("Entering lanczos._lowest_eigen with B={}, vals={}, dim={}, block_action={}, autocomplete={}, and thresh={} ({}).".format(B,vals,dim,block_action,autocomplete,thresh,"vectors" if converge_vectors else "values"))
     # Repeatedly diagonalize projections until convergence
@@ -318,7 +318,7 @@ def _lowest_eigen(H, vals, vecs, dim, block_action, autocomplete, converge_vecto
         vals = list(new_vals)		# make list or it is a tuple that does not support deletion in call from lowest_eigen
         # admin
         t1 = time.time()
-        if debug:
+        if True:
             printout("Lanczos iteration {}:  Eigenvalues = {}\nerrors = {}".format(iteration,vals,errors))
             printout('cycle time =', t1 - t0)
         t0 = t1
@@ -360,7 +360,7 @@ def lowest_eigen(H, v, thresh, dim=10, num=None, block_action=None, autocomplete
     are ill-defined and the algorithm never converges.  On the other hand, with the energy criterion,
     these ill-defined vectors are quietly returned, since this is a difficult condition to be sure of.
     """
-    debug = True
+    debug = False
     Bo = len(v)					# the initial block size (will shrink as vectors converge)
     if (num is None) or (num>Bo):  num = Bo	# if not specified, assume we want one eigenvector per starting vector
     if debug:  printout("Entering lanczos.lowest_eigen with Bo={}, dim={}, num={}, block_action={}, autocomplete={}, and thresh={} ({}).".format(Bo,dim,num,block_action,autocomplete,thresh,"vectors" if converge_vectors else "values"))
@@ -372,7 +372,7 @@ def lowest_eigen(H, v, thresh, dim=10, num=None, block_action=None, autocomplete
     while B>Bo-num or min(vals or [float("inf")])<max(frozen_vals or [-float("inf")]):				# vecs will constantly be replaced, when desired converged vectors are removed, we stop
         P = 1 - frozen_vecs.projection_opr()			# P projects out frozen vectors
         vecs = vector_set(H.space, [ P|Vi for Vi in vecs ])	# If we make sure they are projected out here ... (will be nicer when P|vecs works, also _lowest_eigen enforces ON)
-        vals,vecs,errors = _lowest_eigen(P|H, vals, vecs, dim, block_action, autocomplete, converge_vectors, thresh, printout=indented(printout)) # ... then we only need P|H here and not P|H|P (b/c projectors are idempotnent, also block_action "fixed" at lower level)
+        vals,vecs,errors = _lowest_eigen(P|H, vals, vecs, dim, block_action, autocomplete, converge_vectors, thresh, printout=printout) # ... then we only need P|H here and not P|H|P (b/c projectors are idempotnent, also block_action "fixed" at lower level)
         for n,error in reversed(list(enumerate(errors))):	# loop backwards so that deletions do not change indexes looped over later in time (enumerate is not itself reversible)
            if error<thresh:					# MOVE any converged vectors from vecs to frozen_vecs
                 frozen_vals += [vals[n]]
@@ -388,7 +388,7 @@ def lowest_eigen_one_by_one(H, v_list, thresh, dim=10, num=None, block_action=No
     this function solves each eigenpair separately and then projects it out, as opposed to solving them all as one
     as done in lowest_eigen, which highly increases the robustness of the solver.
     """
-    debug = True
+    debug = False
     Bo = 1  #len(v)					# the initial block size (will shrink as vectors converge)
     if (num is None) or (num>Bo):  num = Bo	# if not specified, assume we want one eigenvector per starting vector
     if debug:  printout("Entering lanczos.lowest_eigen with Bo={}, dim={}, num={}, block_action={}, autocomplete={}, and thresh={} ({}).".format(Bo,dim,num,block_action,autocomplete,thresh,"vectors" if converge_vectors else "values"))
@@ -401,7 +401,7 @@ def lowest_eigen_one_by_one(H, v_list, thresh, dim=10, num=None, block_action=No
         while B>Bo-num or min(vals or [float("inf")])<max(frozen_vals or [-float("inf")]):				# vecs will constantly be replaced, when desired converged vectors are removed, we stop
             P = 1 - frozen_vecs.projection_opr()			# P projects out frozen vectors
             vecs = vector_set(H.space, [ P|Vi for Vi in vecs ])	# If we make sure they are projected out here ... (will be nicer when P|vecs works, also _lowest_eigen enforces ON)
-            vals,vecs,errors = _lowest_eigen(P|H, vals, vecs, dim, block_action, autocomplete, converge_vectors, thresh, printout=indented(printout)) # ... then we only need P|H here and not P|H|P (b/c projectors are idempotnent, also block_action "fixed" at lower level)
+            vals,vecs,errors = _lowest_eigen(P|H, vals, vecs, dim, block_action, autocomplete, converge_vectors, thresh, printout=printout) # ... then we only need P|H here and not P|H|P (b/c projectors are idempotnent, also block_action "fixed" at lower level)
             for n,error in reversed(list(enumerate(errors))):	# loop backwards so that deletions do not change indexes looped over later in time (enumerate is not itself reversible)
                 if error<thresh:					# MOVE any converged vectors from vecs to frozen_vecs
                     frozen_vals += [vals[n]]

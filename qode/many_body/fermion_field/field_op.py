@@ -162,12 +162,12 @@ def opPsi_2e(HPsi, Psi, V, configs, thresh, wisdom, n_threads):
                     wisdom_det_idx,     # for each ket config, a list of the (possibly negated) index that each respective field-operator string gives projection onto
                     n_threads)          # number of threads to spread the work over
 
-def build_densities(op_string, n_orbs, bras, kets, bra_configs, ket_configs, thresh, wisdom, antisymmetrize, n_threads):
+def build_densities(op_string, n_orbs, bras, kets, bra_configs, ket_configs, thresh, wisdom, antisymmetrize, printout, n_threads):
     n_create  = op_string.count("c")
     n_annihil = op_string.count("a")
     if (op_string != "c"*n_create + "a"*n_annihil):  raise ValueError("density operator string is not vacuum normal ordered")
     shape = [n_orbs] * (n_create + n_annihil)
-    print("####", op_string, "->", shape, "x", len(bras)*len(kets))
+    printout(f"{op_string}:  dimensions x count = {shape} x {len(bras)*len(kets)}")
     rho = [numpy.zeros(shape, dtype=Double.numpy, order="C") for _ in range(len(bras)*len(kets))]
     if wisdom is None:
         wisdom_occupied, wisdom_det_idx = [numpy.zeros((1,), dtype=Int.numpy, order="C")], [numpy.zeros((1,), dtype=BigInt.numpy, order="C")]    # dummy arrays
@@ -196,14 +196,14 @@ def build_densities(op_string, n_orbs, bras, kets, bra_configs, ket_configs, thr
                        wisdom_det_idx,        # for each ket config, a list of the (possibly negated) index that each respective field-operator string gives projection onto
                        n_threads)             # number of threads to spread the work over
     if antisymmetrize:
-        print("antisymmetrizing ... ", end="")
+        printout("antisymmetrizing ... ", end="")
         antisymm.antisymmetry(rho,          # linear array of density tensors to antisymmetrize
                               len(rho),     # number of density tensors to antisymmetrize
                               n_orbs,       # number of orbitals
                               n_create,     # number of creation operators
                               n_annihil,    # number of annihilation operators
                               0)            # ie, False.  Do not undo the antisymmetry
-        print("done")
+        printout("done")
     return [[rho[i*len(kets)+j] for j in range(len(kets))] for i in range(len(bras))]
     #return {(i,j):rho[i*len(kets)+j] for i in range(len(bras)) for j in range(len(kets))}
 
