@@ -116,7 +116,7 @@ class det_densities(object):
 
 
 
-def opPsi_1e(HPsi, Psi, h, configs, thresh, wisdom, n_threads):
+def opPsi_1e(HPsi, Psi, h, configs, thresh, wisdom, n_threads=1):
     if wisdom is None:
         wisdom_occupied, wisdom_det_idx = [numpy.zeros((1,), dtype=Int.numpy, order="C")], [numpy.zeros((1,), dtype=BigInt.numpy, order="C")]    # dummy arrays
         wisdom_mode = det_densities.ignore
@@ -139,7 +139,7 @@ def opPsi_1e(HPsi, Psi, h, configs, thresh, wisdom, n_threads):
                     wisdom_det_idx,     # for each ket config, a list of the (possibly negated) index that each respective field-operator string gives projection onto
                     n_threads)          # number of threads to spread the work over
 
-def opPsi_2e(HPsi, Psi, V, configs, thresh, wisdom, n_threads):
+def opPsi_2e(HPsi, Psi, V, configs, thresh, wisdom, n_threads=1):
     if wisdom is None:
         wisdom_occupied, wisdom_det_idx = [numpy.zeros((1,), dtype=Int.numpy, order="C")], [numpy.zeros((1,), dtype=BigInt.numpy, order="C")]    # dummy arrays
         wisdom_mode = det_densities.ignore
@@ -162,7 +162,7 @@ def opPsi_2e(HPsi, Psi, V, configs, thresh, wisdom, n_threads):
                     wisdom_det_idx,     # for each ket config, a list of the (possibly negated) index that each respective field-operator string gives projection onto
                     n_threads)          # number of threads to spread the work over
 
-def build_densities(op_string, n_orbs, bras, kets, bra_configs, ket_configs, thresh, wisdom, antisymmetrize, printout, n_threads):
+def build_densities(op_string, n_orbs, bras, kets, bra_configs, ket_configs, thresh, wisdom, antisymmetrize, printout=print, n_threads=1):
     n_create  = op_string.count("c")
     n_annihil = op_string.count("a")
     if (op_string != "c"*n_create + "a"*n_annihil):  raise ValueError("density operator string is not vacuum normal ordered")
@@ -212,7 +212,7 @@ def asymmetrize(op_string, rho):
 def antisymmetrize(op_string, rho):
     antisymm.antisymmetry([rho], 1, rho.shape[0], op_string.count("c"), op_string.count("a"), 0)
 
-def generate_wisdom(op_string, n_orbs, bra_configs, ket_configs, wisdom, n_threads):
+def generate_wisdom(op_string, n_orbs, bra_configs, ket_configs, wisdom, n_threads=1):
     n_create  = op_string.count("c")
     n_annihil = op_string.count("a")
     if (op_string != "c"*n_create + "a"*n_annihil):  raise ValueError("density operator string is not vacuum normal ordered")
