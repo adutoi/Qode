@@ -20,7 +20,7 @@ from ...util.PyC import Double
 from . import field_op
 
 class Hamiltonian(object):
-    def __init__(self, h, V, thresh=1e-10, n_elec=None, n_threads=1):    # n_elec is a requirement to use wisdom, but need not be well-defined in general
+    def __init__(self, h, V=None, thresh=1e-10, n_elec=None, n_threads=1):    # n_elec is a requirement to use wisdom, but need not be well-defined in general
         self.h = h
         self.V = V
         self.thresh = thresh
@@ -35,5 +35,6 @@ class Hamiltonian(object):
     def __call__(self, Psi, configs):
         HPsi = numpy.zeros(len(configs), dtype=Double.numpy, order="C")
         field_op.opPsi_1e(HPsi, Psi, self.h, configs, self.thresh, self.wisdom_1e, self.n_threads)
-        field_op.opPsi_2e(HPsi, Psi, self.V, configs, self.thresh, self.wisdom_2e, self.n_threads)
+        if self.V is not None:
+            field_op.opPsi_2e(HPsi, Psi, self.V, configs, self.thresh, self.wisdom_2e, self.n_threads)
         return HPsi

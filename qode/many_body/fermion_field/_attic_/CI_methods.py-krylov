@@ -15,7 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
-from ...util import struct, indented
+import numpy
+from ...util import struct, indented, sort_eigen
 from ...math import linear_inner_product_space
 from ...math.lanczos import lowest_eigen
 from .CI_space_traits import CI_space_traits
@@ -89,3 +90,81 @@ def lanczos_ground(integrals, configs, occupied, thresh=None, printout=print, n_
         print((Evec|SEvec))
 
     return Eval, Evec
+
+
+
+
+
+
+def krylov_iteration(Psi, Hmasked, Hfull, Sops, B=10, printout=print, n_threads=1):
+
+    # make chain of H^n vectors using masked Hamiltonian, n=(0,B-1) for BxB matrix
+    # act SH with full Hamiltonian on each vector in chain store separately for B-1 entries
+    # build BxB SH and S matrices
+    # transform to symmetric orthonormal rep
+    # diagonalize
+    # back-transform and return lowest vec/val
+
+    Krylov = [Psi]
+    for n in range(1,B):
+        Psi = Hmasked|Psi
+        Krylov += [Psi]
+
+    SKrylov  = [_act_Sops(Sops,       psi) for psi in Krylov]
+    SHKrylov = [_act_Sops(Sops, Hfull|psi) for psi in Krylov]
+
+    S = numpy.array([[(psi_m|Spsi_n)  for Spsi_n  in SKrylov ] for psi_m in Krylov])
+    H = numpy.array([[(psi_m|SHpsi_n) for SHpsi_n in SHKrylov] for psi_m in Krylov])
+    printout("error in overlap     matrix symmetry =", numpy.linalg.norm(S - S.T))
+    printout("error in hamiltonian matrix symmetry =", numpy.linalg.norm(H - H.T))
+
+    s, U = sort_eigen(numpy.linalg.eigh(S))
+    s = numpy.diag(s**(-1/2))
+
+    H = s @ U.T @ H @ U @ s
+    evals, evecs = sort_eigen(numpy.linalg.eigh(H))
+    evecs = U @ evecs @ U.T
+
+    return evals[0], evecs[:,0]
+
+
+
+def krylov_ground(integrals, configs, occupied, thresh, printout=print, n_threads=1, full_ints=None):
+    printout=indented(printout)
+
+    CI_space = linear_inner_product_space(CI_space_traits(configs))
+    guess = CI_space.member(CI_space.aux.basis_vec(occupied))
+
+    N = integrals.N
+    Hmasked = CI_space.lin_op(Hamiltonian(integrals.h, integrals.V, n_threads=n_threads))
+    Hfull   = CI_space.lin_op(Hamiltonian(full_ints.h, full_ints.V, n_threads=n_threads))
+    Sops   = [CI_space.lin_op(Hamiltonian(sigma,                    n_threads=n_threads)) for sigma in full_ints.sigma]
+    Sguess  = _act_Sops(Sops, guess)
+    SHguess = _act_Sops(Sops, Hfull|guess)
+    Nguess = (guess|Sguess)
+    Eguess = (guess|SHguess) / Nguess
+    printout("norm   of guess =", Nguess)
+    printout("energy of guess =", Eguess + N)
+    printout("energy of guess (raw) =", Eguess)
+
+    while error>thresh:
+        Eval, Evec = krylov_iteration(guess, Hmasked, Hfull, Sops, printout=printout, n_threads=n_threads)
+        error = abs(Eval - Eguess)
+        Eguess, guess = Eval, Evec
+
+    SEvec  = _act_Sops(Sops, Evec)
+    SHEvec = _act_Sops(Sops, Hfull|Evec)
+    NEvec = (Evec|SEvec)
+    EEvec = (Evec|SHEvec) / NEvec
+    printout("norm   of eigenvector =", NEvec)
+    printout("energy of eigenvector =", EEvec + N)
+    printout("energy of eigenvector (raw) =", EEvec)
+
+    return Eval, Evec
+
+
+
+
+
+
+
