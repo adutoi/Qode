@@ -96,4 +96,10 @@ def lanczos_ground(integrals, configs, occupied, n_states=1, thresh=None, printo
             printout(f"Proper norm of state {i} = {norm}")
             printout(f"Proper expectation energy of state {i} = {energy} -> {energy+N}")
 
+    printout("Raw (projective) overlap matrix:")
+    for _1,bra in results:
+        for _2,ket in results:
+            printout(f"{(bra|ket): .10e}", end="  ")
+        printout()
+
     return results
