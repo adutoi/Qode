@@ -17,22 +17,24 @@
 #
 from ...util import struct, indented
 from ...math import linear_inner_product_space
-from ...math.lanczos import lowest_eigen, lowest_eigen_one_by_one
+from ...math.lanczos import lowest_eigen
 from .CI_space_traits import CI_space_traits
 from .field_op_ham import Hamiltonian
 from . import configurations
 
 
 
-def monomer_configs(frag, Sz=0):
-    configs, _ = configurations.Sz_configs(frag.basis.n_spatial_orb, frag.n_elec_ref, Sz, frag.basis.core)
+def monomer_configs(frag, Sz=0, no_frozen_core=False):
+    core = [] if no_frozen_core else frag.basis.core
+    configs, _ = configurations.Sz_configs(frag.basis.n_spatial_orb, frag.n_elec_ref, Sz, core)
     return configs    # just need complete spin-orbital configs
 
-def dimer_configs(frag0, frag1, Sz=0):
+def dimer_configs(frag0, frag1, Sz=0, no_frozen_core=False):
     n_spatial_0 = frag0.basis.n_spatial_orb
     n_spatial_1 = frag1.basis.n_spatial_orb
     n_spatial   = n_spatial_0 + n_spatial_1
-    core        = configurations.combine_orb_lists(frag0.basis.core, frag1.basis.core, n_spatial_0)    # core in dimer spatial-orb representation
+    core        = [] if no_frozen_core 
+                  else configurations.combine_orb_lists(frag0.basis.core, frag1.basis.core, n_spatial_0)    # core in dimer spatial-orb representation
 
     _, (dn_configs, up_configs) = configurations.Sz_configs(n_spatial, frag0.n_elec_ref+frag1.n_elec_ref, Sz, core)    # get individual spin-dn/up configs
     dn_configs_decomp = configurations.decompose_configs(dn_configs, [n_spatial_0, n_spatial_1])    # break spin-dn/up configurations into fragments ...
@@ -50,8 +52,6 @@ def dimer_configs(frag0, frag1, Sz=0):
 
     return configs, nested
 
-
-
 def _act_Sops(Sops, state_in):
     state = 1 * state_in
     for Sop in Sops:
@@ -59,41 +59,31 @@ def _act_Sops(Sops, state_in):
         state += Sop_state
     return state
 
-def lanczos_ground(integrals, configs, occupied, n_states=1, thresh=None, printout=print, n_threads=1, full_ints=None):
+def lanczos_ground(integrals, configs, occupied, thresh=None, printout=print, n_threads=1, sigma_ints=None):
     options = struct(printout=indented(printout))
     if thresh is not None:         # if not defined/passed forward ...
         options.thresh = thresh    # ... default from lanczos takes over
 
-    N, h, V  = integrals("N h V")
+    N, S, h, V = integrals
     CI_space = linear_inner_product_space(CI_space_traits(configs))
-    H        = CI_space.lin_op(Hamiltonian(h,V, n_threads=n_threads))
-    guess    = CI_space.member(CI_space.aux.basis_vec(occupied))
 
-    energy = (guess|H|guess)
-    printout(f"Projective energy of guess = {energy} -> {energy+N}")
-    if full_ints is not None:
-        Hfull = CI_space.lin_op(Hamiltonian(full_ints.h, full_ints.V, n_threads=n_threads))
-        Sops = [CI_space.lin_op(Hamiltonian(sig1, sig2, n_threads=n_threads)) for sig1,sig2 in zip(full_ints.sigma_1, full_ints.sigma_2)]
-        Sguess  = _act_Sops(Sops, guess)
-        SHguess = _act_Sops(Sops, Hfull|guess)
-        norm   = (guess|Sguess)
-        energy = (guess|SHguess) / norm
-        printout(f"Proper norm of guess = {norm}")
-        printout(f"Proper expectation energy of guess = {energy} -> {energy+N}")
+    H     = CI_space.lin_op(Hamiltonian(h,V, n_threads=n_threads))
+    guess = CI_space.member(CI_space.aux.basis_vec(occupied))
 
-    if n_states==1:
-        results = lowest_eigen(H, [guess], **options)    # in theory, can just go to "else" directly, but out of caution, leave old functionality alone for now
-    else:
-        results = lowest_eigen_one_by_one(H, [guess]*n_states, **options)    # a little weird to demand multiple states from one guess, but can refine later
+    if sigma_ints is not None:
+        Sops = [CI_space.lin_op(Hamiltonian(sig, n_threads=n_threads)) for sig in sigma_ints]
+        Sguess = _act_Sops(Sops, guess)
+        SHguess = _act_Sops(Sops, H|guess)
+        print(((guess|SHguess) / (guess|Sguess)) + N)
 
-    for i,(Eval,Evec) in enumerate(results):
-        printout(f"Projective Energy eigenvalue for state {i} = {Eval} -> {Eval+N}")
-        if full_ints is not None:
-            SEvec  = _act_Sops(Sops, Evec)
-            SHEvec = _act_Sops(Sops, Hfull|Evec)
-            norm   = (Evec|SEvec)
-            energy = (Evec|SHEvec) / norm
-            printout(f"Proper norm of state {i} = {norm}")
-            printout(f"Proper expectation energy of state {i} = {energy} -> {energy+N}")
+    printout("Energy of guess =", (guess|H|guess) + N)
+    (Eval,Evec), = lowest_eigen(H, [guess], **options)
+    printout("Ground-state energy = ", Eval+N)
 
-    return results
+    if sigma_ints is not None:
+        SEvec = _act_Sops(Sops, Evec)
+        SHEvec = _act_Sops(Sops, H|Evec)
+        print(((Evec|SHEvec) / (Evec|SEvec)) + N)
+        print((Evec|SEvec))
+
+    return Eval, Evec
