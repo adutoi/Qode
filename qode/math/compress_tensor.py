@@ -63,7 +63,14 @@ def svd_decomposition(nparray_Nd, indices_A, indices_B=None, thresh=1e-6, big=10
     if list(sorted(all_free_indices))!=list(range(len(nparray_Nd.shape))):
         raise RuntimeError("dimension mismatch")
     if len(indices_A)==0 or len(indices_B)==0:
-        return wrapper(nparray_Nd)
+        #return wrapper(nparray_Nd)
+        # TODO: the following is required for the integral transformation of the orbital solver
+        try:
+            return wrapper(nparray_Nd)
+        except ValueError:
+            #print(type(nparray_Nd), nparray_Nd)
+            #print(tensornet.raw(nparray_Nd))
+            return wrapper(tensornet.raw(nparray_Nd))
     #
     Y = nparray_Nd
     nparray_Nd = nparray_Nd.transpose(all_free_indices)
