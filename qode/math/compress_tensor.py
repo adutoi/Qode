@@ -65,6 +65,8 @@ def svd_decomposition(nparray_Nd, indices_A, indices_B=None, thresh=1e-6, big=10
     if len(indices_A)==0 or len(indices_B)==0:
         #return wrapper(nparray_Nd)
         # TODO: the following is required for the integral transformation of the orbital solver
+        # ^ This would be better solved by applying tensornet.raw() to nparray_Nd argument before passing
+        #   (name of argument hints at assumed data type).  Then can restore original line.
         try:
             return wrapper(nparray_Nd)
         except ValueError:
