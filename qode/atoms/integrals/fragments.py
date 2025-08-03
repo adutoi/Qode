@@ -281,52 +281,52 @@ class fragMO_integrals(object):		# actually more general than MOs ... any (fragm
 
 
 class spin_orb_integrals(object):
-    def __init__(self, spatial_ints, arrange="blocked", antisymmetrize=True, cache=False, rule_wrappers=None):
+    def __init__(self, spatial_ints, arrange, antisymmetrize=True, cache=False, rule_wrappers=None):
         self.fragments = spatial_ints.fragments
         frag_ids = keys(self.fragments)
-        if arrange not in ("blocked","alternating"):  raise ValueError
+        #if arrange not in ("blocked","alternating"):  raise ValueError
         cache = [] if cache else [cached]
         if rule_wrappers is None:  rule_wrappers = []
-        self.S = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin2_rule(    spatial_ints.S, arrange)], ranges=[frag_ids,frag_ids])
-        self.T = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin2_rule(    spatial_ints.T, arrange)], ranges=[frag_ids,frag_ids])
-        self.U = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin2_rule(    spatial_ints.U, arrange)], ranges=[frag_ids,frag_ids,frag_ids])
-        if antisymmetrize:  self.V = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spinAnti4_rule(spatial_ints.V, arrange)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
-        else:               self.V = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin4_rule(    spatial_ints.V, arrange)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
+        self.S = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin2_rule(    spatial_ints.S, arrange, self.fragments[0].basis.n_orb_map)], ranges=[frag_ids,frag_ids])
+        self.T = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin2_rule(    spatial_ints.T, arrange, self.fragments[0].basis.n_orb_map)], ranges=[frag_ids,frag_ids])
+        self.U = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin2_rule(    spatial_ints.U, arrange, self.fragments[0].basis.n_orb_map)], ranges=[frag_ids,frag_ids,frag_ids])
+        if antisymmetrize:  self.V = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spinAnti4_rule(spatial_ints.V, arrange, self.fragments[0].basis.n_orb_map)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
+        else:               self.V = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin4_rule(    spatial_ints.V, arrange, self.fragments[0].basis.n_orb_map)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
         if hasattr(spatial_ints, "V_half"):
-            if antisymmetrize:  self.V_half = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spinAnti4half_rule(spatial_ints.V_half, arrange)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
-            else:               self.V_half = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin4_rule(    spatial_ints.V_half, arrange)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
+            if antisymmetrize:  self.V_half = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spinAnti4half_rule(spatial_ints.V_half, arrange, self.fragments[0].basis.n_orb_map)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
+            else:               self.V_half = dynamic_array(cache + rule_wrappers + [spin_orb_integrals._spin4_rule(    spatial_ints.V_half, arrange, self.fragments[0].basis.n_orb_map)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
     @staticmethod
-    def _spin2_rule(H, arrange):    # H is S, T, or U
-        rearrangement = spatial_to_spin.one_electron_blocked
-        if arrange=="alternating":  rearrangement = spatial_to_spin.one_electron_alternating
+    def _spin2_rule(H, arrange, n_orb_map):    # H is S, T, or U
+        rearrangement = arrange[0]#spatial_to_spin.one_electron_blocked
+        #if arrange=="alternating":  rearrangement = spatial_to_spin.one_electron_alternating
         def spin2(*m1m2):	# could be m1,m2,m3 in the case of U, but antisymmetrization of block is the same
-            return rearrangement(H[m1m2])
+            return rearrangement(H[m1m2], n_orb_map)
         return spin2
     @staticmethod
-    def _spin4_rule(V, arrange):
-        rearrangement = spatial_to_spin.two_electron_blocked
-        if arrange=="alternating":  rearrangement = spatial_to_spin.two_electron_alternating
+    def _spin4_rule(V, arrange, n_orb_map):
+        rearrangement = arrange[1]#spatial_to_spin.two_electron_blocked
+        #if arrange=="alternating":  rearrangement = spatial_to_spin.two_electron_alternating
         def spin4(m1,m2,m3,m4):
-            return rearrangement(V[m1,m2,m3,m4])
+            return rearrangement(V[m1,m2,m3,m4], n_orb_map)
         return spin4
     @staticmethod
-    def _spinAnti4_rule(V, arrange):
-        rearrangement = spatial_to_spin.two_electron_blocked
-        if arrange=="alternating":  rearrangement = spatial_to_spin.two_electron_alternating
+    def _spinAnti4_rule(V, arrange, n_orb_map):
+        rearrangement = arrange[1]#spatial_to_spin.two_electron_blocked
+        #if arrange=="alternating":  rearrangement = spatial_to_spin.two_electron_alternating
         def spinAnti4(m1,m2,m3,m4):
-            tmp1 = rearrangement(V[m1,m2,m3,m4])
-            tmp2 = rearrangement(V[m1,m2,m4,m3])
+            tmp1 = rearrangement(V[m1,m2,m3,m4], n_orb_map)
+            tmp2 = rearrangement(V[m1,m2,m4,m3], n_orb_map)
             return (1/4.) * (tmp1 - numpy.swapaxes(tmp2,2,3))			# premature optimization is the root of all evil ... this will possibly call non-cached result from next layer twice ... must be possible to fix at this layer
         return spinAnti4
     @staticmethod
-    def _spinAnti4half_rule(V, arrange):
-        rearrangement = spatial_to_spin.two_electron_blocked
-        if arrange=="alternating":  rearrangement = spatial_to_spin.two_electron_alternating
+    def _spinAnti4half_rule(V, arrange, n_orb_map):
+        rearrangement = arrange[1]#spatial_to_spin.two_electron_blocked
+        #if arrange=="alternating":  rearrangement = spatial_to_spin.two_electron_alternating
         def spinAnti4half(m1,m2,m3,m4):
-            tmp1 = rearrangement(V[m1,m2,m3,m4])
-            tmp2 = rearrangement(V[m1,m2,m4,m3])
-            tmp3 = rearrangement(V[m2,m1,m3,m4])
-            tmp4 = rearrangement(V[m2,m1,m4,m3])
+            tmp1 = rearrangement(V[m1,m2,m3,m4], n_orb_map)
+            tmp2 = rearrangement(V[m1,m2,m4,m3], n_orb_map)
+            tmp3 = rearrangement(V[m2,m1,m3,m4], n_orb_map)
+            tmp4 = rearrangement(V[m2,m1,m4,m3], n_orb_map)
             return (1/4.) * ((tmp1-numpy.swapaxes(tmp2,2,3)) - numpy.swapaxes(tmp3-numpy.swapaxes(tmp4,2,3),0,1))			# premature optimization is the root of all evil ... this will possibly call non-cached result from next layer twice ... must be possible to fix at this layer
         return spinAnti4half
 

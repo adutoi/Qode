@@ -20,7 +20,7 @@ from .printfunc     import printline
 from .numpy_mat_vec import random_matrix, basis_vector, zero_vector
 from .parallel      import parallelize_task
 from .output        import textlog, output, indent, indented
-from .sort_eigen    import sort_eigen
+from .sort_eigen    import sort_eigen_np, sort_eigen_torch
 from .quiet         import quiet
 
 from . import min

@@ -52,6 +52,8 @@ class to_contract(object):
             self._tensors = list(_from_list)    # for internal use only.  ignores first two args
         self._contract = contract
     def divulge(self):    # logically only called from _contract when self._tensors is of length 1
+        #print(type(self._tensors))
+        #print(self._tensors[0])
         return self._tensors[0]
     def _call_contract(self):
         return self._contract(*(to_contract(*tensor, self._contract) for tensor in self._tensors))

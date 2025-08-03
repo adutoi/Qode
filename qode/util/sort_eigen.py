@@ -16,8 +16,9 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 import numpy
+import torch
 
-def sort_eigen(np_out, order="ascending"):
+def sort_eigen_np(np_out, order="ascending"):
     """ Takes the outputs of a numpy eigensolver and sorts them by the eigenvalue, without otherwise changing the format """
     if   order=="ascending"  or order=="<":  reverse = False
     elif order=="descending" or order==">":  reverse = True
@@ -26,4 +27,12 @@ def sort_eigen(np_out, order="ascending"):
     e, C = zip(*sorted(zip( e, C.T.tolist() ), key=lambda pair: pair[0], reverse=reverse))
     return numpy.array(e), numpy.array(C).T
 
+def sort_eigen_torch(np_out, order="ascending"):
+    """ Takes the outputs of a torch eigensolver and sorts them by the eigenvalue, without otherwise changing the format """
+    if   order=="ascending"  or order=="<":  reverse = False
+    elif order=="descending" or order==">":  reverse = True
+    else:  raise ValueError("Unrecognized ordering requested")
+    e, C = np_out
+    e, C = zip(*sorted(zip( e, C.T.tolist() ), key=lambda pair: torch.real(pair[0]), reverse=reverse))
+    return torch.tensor(e), torch.tensor(C).T
 

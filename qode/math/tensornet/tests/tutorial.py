@@ -105,7 +105,7 @@ ABCD2 *= 2
 # intermediates that might be used in multiple further expressions, for example.  The raw()
 # function immediately below calls evaluate() and subsequently returns the result as a raw tensor,
 # which we can test against by contracting the orginal data.
-test = 2 * einsum("pr,rt,sq,ts->pq", A_, B_, C_, D_)
+test = 2 * einsum("pr,rt->pt,sq,ts->pq", A_, B_, C_, D_)
 print("relative error in check  1:", check(raw(ABCD1), test))
 print("relative error in check  2:", check(raw(ABCD2), test))
 
