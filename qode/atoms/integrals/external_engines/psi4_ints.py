@@ -39,14 +39,13 @@ def AO_ints(geometry, basis, max_mem=1e9, NucPotentialOnly=False, printout=print
     ints = psi4.core.MintsHelper(bas)
     mem = ints.nbf()**4 * 8	# assuming 8 bytes per integral
     if mem>max_mem:  raise ValueError("Raise max_mem to above {} (bytes) to store this many integrals.".format(mem))
+    U = numpy.array(ints.ao_potential())
     if NucPotentialOnly:
         S = None
-        U = numpy.array(ints.ao_potential())
         T = None
         V = None
     else:
         S = numpy.array(ints.ao_overlap())
-        U = numpy.array(ints.ao_potential())
         T = numpy.array(ints.ao_kinetic())
         V = brabraketket(numpy.array(ints.ao_eri()), printout)
     elapsed = timeit.default_timer() - start_time

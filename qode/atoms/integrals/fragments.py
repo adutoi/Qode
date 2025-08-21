@@ -26,7 +26,6 @@
 import numpy
 from ...util.dynamic_array import dynamic_array, cached, mask
 from .. import nuc_repulsion
-from .external_engines import psi4_ints
 from . import spatial_to_spin
 import timeit
 
@@ -179,7 +178,15 @@ class Nuc_repulsion(object):
 
 
 class AO_integrals(object):
-    def __init__(self, fragments, integrals_engine=psi4_ints, rule_wrappers=None, printout=print):
+    def __init__(self, fragments, rule_wrappers=None, printout=print, backend="psi4"):
+        if backend == "psi4":
+            from .external_engines import psi4_ints
+            integrals_engine = psi4_ints
+        elif backend == "vlx":
+            from .external_engines import vlx_ints
+            integrals_engine = vlx_ints
+        else:
+            raise NotImplementedError(f"backend {backend} cannot be mapped to integral engine")
         self.fragments = fragments
         frag_ids = keys(self.fragments)
         sort_keys = key_sorter(fragments)
@@ -223,9 +230,9 @@ class AO_integrals(object):
     @staticmethod
     def _add_fragment(atoms, ghost=False):
         ghost = "@" if ghost else ""
-        fragment = ""
         for atom in atoms:
             element, (x,y,z) = atom  #("element position")    # atom is a struct
+            fragment = ""
             fragment += "{:s} {:.16f} {:.16f} {:.16f}\n".format(ghost+element, x, y, z)
         return fragment
     @staticmethod
