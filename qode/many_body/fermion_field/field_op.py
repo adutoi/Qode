@@ -39,7 +39,7 @@ orbs_per_configint = field_op.orbs_per_configint()
 class packed_configs(object):
     def __init__(self, configs):
         self.length = len(configs)
-        max_orbs  = math.floor(1 + math.log(configs[-1],2))
+        max_orbs  = math.floor(1 + math.log(max(configs),2))
         self.size = 1 + int(max_orbs)//orbs_per_configint
         self.packed = numpy.zeros(self.length * self.size, dtype=BigInt.numpy, order="C")
         reduction = 2**orbs_per_configint
@@ -163,6 +163,7 @@ def opPsi_2e(HPsi, Psi, V, configs, thresh, wisdom, n_threads=1):
                     n_threads)          # number of threads to spread the work over
 
 def build_densities(op_string, n_orbs, bras, kets, bra_configs, ket_configs, thresh, wisdom, antisymmetrize, printout=print, n_threads=1):
+    # requires configs to be sorted in ascending order!
     n_create  = op_string.count("c")
     n_annihil = op_string.count("a")
     if (op_string != "c"*n_create + "a"*n_annihil):  raise ValueError("density operator string is not vacuum normal ordered")

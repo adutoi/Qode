@@ -179,10 +179,10 @@ class Nuc_repulsion(object):
 
 class AO_integrals(object):
     def __init__(self, fragments, rule_wrappers=None, printout=print, backend="psi4"):
-        if backend == "psi4":
+        if "psi4" in backend:
             from .external_engines import psi4_ints
             integrals_engine = psi4_ints
-        elif backend == "vlx":
+        elif "vlx" in backend:
             from .external_engines import vlx_ints
             integrals_engine = vlx_ints
         else:
