@@ -28,14 +28,16 @@ from .compress_tensor import svd_decomposition
 from . import field_traits
 from . import numpy_space
 from . import lanczos
+from . import permute
 
 from .gram_schmidt import gram_schmidt
 
-__all__ = [
+__all__ = [    # is there a reason this does not contain all the symbols above?  should some not be in this list?
     "pi", "floor",
     "abs", "conjugate", "sqrt", "exp", "erf", "erfc", "linear_inner_product_space",
     "vector_set",
     "field_traits",
     "numpy_space",
-    "lanczos"
+    "lanczos",
+    "permute",
 ]
