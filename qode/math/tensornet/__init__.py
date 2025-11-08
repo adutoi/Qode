@@ -16,18 +16,24 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .base           import evaluate, increment, raw, scalar_value, initialize_timer, print_timings
+from .base           import evaluate, increment, raw, scalar_value, shape, initialize_timer, print_timings
 from .tensors        import tensor_sum    # tensor_sum() can initialize an empty accumulator for += use
 from .tensors        import primitive_tensor as _primitive_tensor
 from .contract       import contract      # the only way to build a tensor_network
 from .backends       import dummy_backend, numpy_backend, tensorly_backend
 from .tensor_network import backend_contract_path
 
-def primitive_tensor_wrapper(backend, copy_data=False):
-    def wrapper(raw_tensor):
-        return _primitive_tensor(raw_tensor, backend, contract, copy_data)    # injects 'contract' into tensor_base so it they can contract "themselves"
-    return wrapper
+class primitive_tensor_factory(object):
+    def __init__(self, backend, copy_data=False):
+        self._backend   = backend
+        self._copy_data = copy_data
+    def init(self, raw_tensor):
+        return _primitive_tensor(raw_tensor, self._backend, contract, self._copy_data)    # injects 'contract' into tensor_base so it they can contract "themselves"
+    def scalar_tensor(self, scalar):
+        return _primitive_tensor.scalar_tensor(scalar, self._backend, contract)
+    def zeros(self, shape):
+        return _primitive_tensor.zeros(shape, self._backend, contract)
 
-dummy_tensor = primitive_tensor_wrapper(dummy_backend,    copy_data=False)
-np_tensor    = primitive_tensor_wrapper(numpy_backend.functions,    copy_data=False)
-tl_tensor    = primitive_tensor_wrapper(tensorly_backend.functions, copy_data=False)
+dummy_tensor = primitive_tensor_factory(dummy_backend,    copy_data=False)
+np_tensor    = primitive_tensor_factory(numpy_backend.functions,    copy_data=False)
+tl_tensor    = primitive_tensor_factory(tensorly_backend.functions, copy_data=False)

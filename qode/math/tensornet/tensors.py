@@ -124,6 +124,14 @@ class primitive_tensor(summable_tensor):
             self._raw_tensor = backend.copy_data(raw_tensor)
         else:
             self._raw_tensor = raw_tensor
+    @staticmethod
+    def scalar_tensor(scalar, backend, contract):
+        return primitive_tensor(backend.scalar_tensor(scalar), backend, contract)
+    @staticmethod
+    def zeros(shape, backend, contract):
+        return primitive_tensor(backend.zeros(shape), backend, contract)
+    def copy(self):
+        return primitive_tensor(self._raw_tensor, self._backend, self._contract, copy_data=True)
     def _increment(self, result):
         if self._scalar==1:
             result += self._raw_tensor                                                           # do not make a copy just to use as an increment, but we want to ...
