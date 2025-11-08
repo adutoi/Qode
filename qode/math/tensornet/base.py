@@ -36,6 +36,9 @@ def scalar_value(tensor):
         raise RuntimeError("cannot take the scalar value of a tensornet tensor with >0 free indices")
     return tensor._backend.scalar_value(raw(tensor))
 
+def shape(tensor):    # just in case a user expects such a function to exist
+    return tensor.shape
+
 
 
 def resolve_ellipsis(indices, shape):
