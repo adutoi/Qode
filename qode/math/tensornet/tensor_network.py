@@ -17,7 +17,7 @@
 #
 
 from .base      import evaluate, raw, scalar_value, resolve_ellipsis, timings_start, timings_record
-from .tensors   import summable_tensor, tensor_sum, primitive_tensor
+from .tensors   import summable_tensor, primitive_tensor
 from .heuristic import heuristic    # how to order contraction executions in a network
 
 _backend_contract_path = False    # if True, let backend handle finding the optimal contraction path upon evaluate() call
@@ -75,7 +75,7 @@ class tensor_network(summable_tensor):
         self._result_hash = ( tuple(sorted(tuple(sorted((id(tens._raw_tensor), pos) for tens,pos in prim_list)) for prim_list in self._contractions)),
                                      tuple(tuple(sorted((id(tens._raw_tensor), pos) for tens,pos in prim_list)) for prim_list in self._free_indices) )
     def _increment(self, result):
-        result += raw(self)
+        self._backend.increment(result, raw(self))
         return
     def _evaluate(self):
         if self._scalar==0:    # usually a bad test, but in this case we really mean it.  If it is not exactly zero, there is something to do, and zero can happen (ie, a = 0 * b)

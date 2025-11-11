@@ -36,7 +36,7 @@ def scalar_value(tensor):
         raise RuntimeError("cannot take the scalar value of a tensornet tensor with >0 free indices")
     return tensor._backend.scalar_value(raw(tensor))
 
-def shape(tensor):    # just in case a user expects such a function to exist
+def shape(tensor):    # just in case a user expects such an unbound function to exist
     return tensor.shape
 
 
@@ -47,7 +47,7 @@ def resolve_ellipsis(indices, shape):
     found_ellipsis = False
     for index in indices:
         if index is Ellipsis:
-            if found_ellipsis:  raise IndexError("an index can only have a single ellipsis")
+            if found_ellipsis:  raise IndexError("indices can only have a single ellipsis")
             new_indices += ellipsis_resolution
             found_ellipsis = True
         else:
@@ -74,8 +74,9 @@ class to_contract(object):
         return self._tensors[0]
     def _call_contract(self):
         return self._contract(*(to_contract(*tensor, self._contract) for tensor in self._tensors))
-    def __getattr__(self, attr):
-        if attr=="shape":    # should only be called for non hard-coded attributes
+    def __getattr__(self, attr):    # only called for non hard-coded attributes
+        # doing it this way instead of defining method named shape lets call be tens.shape instead of tens.shape() [just set it in __init__?]
+        if attr=="shape":
             return self._call_contract().shape
         else:
             raise AttributeError("'to_contract' object has no attribute '{}'".format(attr))
@@ -89,15 +90,15 @@ class to_contract(object):
         try:
             other_tensors = other._tensors
         except AttributeError:
-            self._tensors += [(other, None)]    # assume it is a scalar.  means pure outer pdt must be written as A() * B()
+            self._tensors += [(other, None)]    # assume it is a scalar.  means pure outer pdt must be written as A() @ B()
         else:
-            raise TypeError("use @ operator to join tensors via contraction or outer product")
+            raise TypeError("use @ or @= to join tensors via contraction or outer product")
         return self
     def __imatmul__(self, other):
         try:
             other_tensors = other._tensors
         except AttributeError:
-            raise TypeError("use * operator for multiplication by a scalar")
+            raise TypeError("use * or *= for multiplication by a scalar")
         else:
             self._tensors += other_tensors 
         return self
@@ -122,6 +123,11 @@ class to_contract(object):
         return self._call_contract() + other._call_contract()
     def __sub__(self, other):
         return self + (-other)
+    def __iadd__(self, _):
+        raise NotImplementedError("+= and -= do not exist for to_contract")
+    def __isub__(self, _):
+        self += None    # just raises NotImplementedError
+
 
 
 

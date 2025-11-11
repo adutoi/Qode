@@ -45,7 +45,7 @@ class tensor_sum(summable_tensor):
                     self._contract = term_._contract    # directly like this (rather than via base class)
                 except:
                     raise TypeError("only tensornet tensors can be summed")
-            if term_._backend.ID()!=self._backend.ID() or term_.shape!=self.shape:
+            if (term_._backend is not self._backend) or (term_.shape!=self.shape):
                 raise ValueError("only tensornet tensors with the same backend and shape can be summed")
             try:
                 tensor_subterms = term_._tensor_terms
@@ -55,7 +55,7 @@ class tensor_sum(summable_tensor):
                 new_terms = [copy(sub_term) for sub_term in tensor_subterms]    # ... in case we use *=
             self._tensor_terms += new_terms
     def _increment(self, result):
-        result += raw(self)
+        self._backend.increment(result, raw(self))
         return
     def _evaluate(self):
         result = None
@@ -64,7 +64,10 @@ class tensor_sum(summable_tensor):
                 if result is None:  result = raw(term)
                 else:               increment(result, term)    # move actual math out of here and let child classes decided how to add
         if result is None:
-            result = raw(self._tensor_terms[0])                # will produce zero tensor of correct dimensions
+            try:
+                result = raw(self._tensor_terms[0])                # will produce zero tensor of correct dimensions (should I used primitive_tensor.zeros here?)
+            except IndexError:
+                raise ValueError("cannot evaluate empty tensor_sum because no dimension information.  perhaps use primitive_tensor.zeros(shape).")
         return primitive_tensor(result, self._backend, self._contract)
     def __copy__(self):
         return tensor_sum(self._tensor_terms)    # makes a copy of list with copies of terms (bc both modified by += and *=)
@@ -82,6 +85,7 @@ class tensor_sum(summable_tensor):
         return self
     # extra functionality just for tensor_sum
     def __iadd__(self, other):
+        # duplicates some code in __init__.  how to combine?
         other = resolve_contract_ops(other)
         try:
             other_shape    = other.shape
@@ -93,7 +97,7 @@ class tensor_sum(summable_tensor):
             self.shape     = other_shape
             self._backend  = other_backend
             self._contract = other_contract
-        if other_backend.ID()!=self._backend.ID():
+        if other_backend is not self._backend:
             raise ValueError("only tensornet tensors with the same backend can be added")
         if other_shape!=self.shape:
             raise ValueError("only tensors with equivalent shapes can be summed")
@@ -134,15 +138,15 @@ class primitive_tensor(summable_tensor):
         return primitive_tensor(self._raw_tensor, self._backend, self._contract, copy_data=True)
     def _increment(self, result):
         if self._scalar==1:
-            result += self._raw_tensor                                                           # do not make a copy just to use as an increment, but we want to ...
+            self._backend.increment(result, self._raw_tensor)    # do not make a copy just to use as an increment, but we want to ...
         else:
-            result += self._scalar * self._raw_tensor
+            self._backend.increment(result, self._backend.mult(self._scalar, self._raw_tensor))
         return
     def _evaluate(self):
-        return primitive_tensor(self._scalar*self._raw_tensor, self._backend, self._contract)    # ... copy the data in case someone (like tensor_sum) modifies the result of raw()
+        return primitive_tensor(self._backend.mult(self._scalar, self._raw_tensor), self._backend, self._contract)    # ... copy the data in case someone (like tensor_sum) modifies the result of raw()
     def __getitem__(self, indices):
         indices = resolve_ellipsis(indices, self.shape)
-        indexed_tensor = self._raw_tensor[indices]
+        indexed_tensor = self._backend.element(self._raw_tensor, indices)
         if any(isinstance(index,slice) for index in indices):
             new = primitive_tensor(indexed_tensor, self._backend, self._contract, _scalar=self._scalar)
         else:
@@ -154,6 +158,10 @@ class primitive_tensor(summable_tensor):
     def __imul__(self, x):    # enables __mul__, __rmul__, __neg__, and therefore also __sub__
         self._scalar *= x
         return self
+    def __iadd__(self, _):
+        raise NotImplementedError("+= and -= do not exist for primitive_tensor because value of tensornet is lazy evaluation via tensor_sum.\nUse + and - or empty/zero tensor_sum for accumulation.")
+    def __isub__(self, _):
+        self += None    # just raises NotImplementedError
     # extra functionality just for primitive_tensor
     def __str__(self):
-        return "tensornet.primitive_tensor(\n{}\n)".format(indent(str(self._raw_tensor), "    "))
+        return "tensornet.primitive_tensor(\n{}\n)".format(indent(self._backend.str(self._raw_tensor), "    "))

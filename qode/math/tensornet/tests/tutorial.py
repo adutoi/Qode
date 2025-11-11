@@ -23,7 +23,7 @@
 import sys
 import math
 import numpy
-import torch
+#import torch
 import tensorly
 from qode.math.tensornet import np_tensor, tl_tensor, tensor_sum, evaluate, increment, raw, scalar_value, contract
 
@@ -64,12 +64,12 @@ V_ = random_tensor(10)
 
 # Prepare "primitive" tensors for tensornet using wrapping function for raw arrays
 # The original data is never modified by tensornet calls and functions.
-A = prim_tensor(A_)
-B = prim_tensor(B_)
-C = prim_tensor(C_)
-D = prim_tensor(D_)
-U = prim_tensor(U_)
-V = prim_tensor(V_)
+A = prim_tensor.init(A_)
+B = prim_tensor.init(B_)
+C = prim_tensor.init(C_)
+D = prim_tensor.init(D_)
+U = prim_tensor.init(U_)
+V = prim_tensor.init(V_)
 
 # - The top-level utility is this contract function.  It does no computation at this point,
 #   but successive calls build up a tensor "network" of contractions.
@@ -230,9 +230,9 @@ if len(sys.argv)==2:
     factor = float(sys.argv[1])
 dim = math.floor(factor * 10)
 M_ = random_tensor(dim, dim, dim, dim)
-M  = prim_tensor(M_)
+M  = prim_tensor.init(M_)
 T_ = random_tensor(dim, dim)
-T  = prim_tensor(T_)
+T  = prim_tensor.init(T_)
 # ... and test:
 TTMTT = raw(M(p,q,r,s) @ T(p,0) @ T(q,1) @ T(r,2) @ T(s,3))
 print("Tensornet done with 4-index transformation.  Waiting on einsum ... ")
