@@ -64,13 +64,13 @@ def resolve_contract_ops(tensor):
     return temp
 
 class to_contract(object):
-    def __init__(self, tensor, indices, contract, _from_list=None):
+    def __init__(self, tensor, indices, tensor_network, _from_list=None):
         if _from_list is None:
             self._tensors = [(tensor, indices)]
         else:
             self._tensors = list(_from_list)    # for internal use only.  ignores first two args
-        self._contract = contract
-    def divulge(self):    # logically only called from _contract when self._tensors is of length 1
+        self._tensor_network = tensor_network
+    def divulge(self):    # logically only called from _tensor_network when self._tensors is of length 1
         return self._tensors[0]
     def _call_contract(self):
         def _resolve_sum(tensor_factors):
@@ -88,11 +88,11 @@ class to_contract(object):
                     new_outer_terms = []
                     for outer_term in outer_terms:
                         for inner_factor in inner_factors:
-                            new_outer_terms += [outer_term + [to_contract(inner_factor, indices, self._contract)]]
+                            new_outer_terms += [outer_term + [to_contract(inner_factor, indices, self._tensor_network)]]
                     outer_terms = new_outer_terms
             tensor_terms = []
             for outer_term in outer_terms:
-                tensor_terms += [self._contract(*outer_term)]
+                tensor_terms += [self._tensor_network.build(*outer_term)]
             #
             #result_hashes = sorted((term._result_hash, i) for i,term in enumerate(tensor_terms))
             #tensor_terms, tensor_terms_ = [], tensor_terms
@@ -111,9 +111,8 @@ class to_contract(object):
                 for term in tensor_terms[2:]:
                     the_sum += term
                 return the_sum
-        args = (to_contract(*tensor, self._contract) for tensor in self._tensors)
+        args = (to_contract(*tensor, self._tensor_network) for tensor in self._tensors)
         return _resolve_sum(args)
-        #return self._contract(*(to_contract(*tensor, self._contract) for tensor in self._tensors))
     def __getattr__(self, attr):    # only called for non hard-coded attributes
         # doing it this way instead of defining method named shape lets call be tens.shape instead of tens.shape() [just set it in __init__?]
         if attr=="shape":
@@ -146,11 +145,11 @@ class to_contract(object):
         self *= (1./x)
         return self
     def __mul__(self, other):
-        new = to_contract(None, None, self._contract, _from_list=self._tensors)
+        new = to_contract(None, None, self._tensor_network, _from_list=self._tensors)
         new *= other
         return new
     def __matmul__(self, other):
-        new = to_contract(None, None, self._contract, _from_list=self._tensors)
+        new = to_contract(None, None, self._tensor_network, _from_list=self._tensors)
         new @= other
         return new
     def __truediv__(self, x):
@@ -173,14 +172,14 @@ class to_contract(object):
 
 # expected to have a backend and a shape (and a scalar if not a sum), everything else is specific to single class
 class tensor_base(object):
-    def __init__(self, shape, backend, contract):
+    def __init__(self, shape, backend, tensor_network):
         self.shape     = shape
         self._backend  = backend
-        self._contract = contract    # inject the top-most function in the module so that they can contract "themselves"
+        self._tensor_network = tensor_network    # inject the top-most function in the module so that they can contract "themselves"
     def __setitem__(self, item):
         raise RuntimeError("elements of tensornet tensors are not assignable")
     def __call__(self, *indices):
-        return to_contract(self, indices, self._contract)
+        return to_contract(self, indices, self._tensor_network)
     # __mul__, __rmul__, __neg__, and __sub__ use __imul__ from child; multiplication here is always with a scalar
     def __itruediv__(self, x):
         self *= (1./x)

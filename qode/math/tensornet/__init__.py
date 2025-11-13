@@ -19,9 +19,8 @@
 from .base           import evaluate, increment, raw, scalar_value, shape, initialize_timer, print_timings
 from .tensors        import tensor_sum    # tensor_sum() can initialize an empty accumulator for += use
 from .tensors        import primitive_tensor as _primitive_tensor
-from .contract       import contract      # the only way to build a tensor_network
 from .backends       import dummy_backend, numpy_backend, tensorly_backend
-from .tensor_network import backend_contract_path
+from .tensor_network import tensor_network, backend_contract_path
 
 print("""
 U S I N G   E X P E R I M E N T A L   T E N S O R N E T   C O D E
@@ -108,11 +107,11 @@ class primitive_tensor_factory(object):
         self._data_unwrap = data_unwrap
     def init(self, data):
         raw_tensor = self._data_wrap(data)
-        return _primitive_tensor(raw_tensor, self._backend, contract)    # injects 'contract' into tensor_base so it they can contract "themselves"
+        return _primitive_tensor(raw_tensor, self._backend, tensor_network)    # injects 'contract' into tensor_base so it they can contract "themselves"
     def zeros(self, shape):
-        return _primitive_tensor.zeros(shape, self._backend, contract)
+        return _primitive_tensor.zeros(shape, self._backend, tensor_network)
     #def scalar_tensor(self, scalar):
-    #    return _primitive_tensor.scalar_tensor(scalar, self._backend, contract)
+    #    return _primitive_tensor.scalar_tensor(scalar, self._backend, tensor_network)
     def data(tensor):
         return self._data_unwrap(raw(tensor))
 

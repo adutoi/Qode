@@ -24,8 +24,8 @@ from .base    import tensor_base, increment, raw, resolve_ellipsis, resolve_cont
 
 # adds general addition to any class above the base class (needs tensor_sum here for its definition)
 class summable_tensor(tensor_base):
-    def __init__(self, shape, backend, contract):
-        tensor_base.__init__(self, shape, backend, contract)
+    def __init__(self, shape, backend, tensor_network):
+        tensor_base.__init__(self, shape, backend, tensor_network)
     def __add__(self, other):
         return tensor_sum([self, other])
 
@@ -42,7 +42,7 @@ class tensor_sum(summable_tensor):
                 try:
                     self.shape     = term_.shape        # A little dirty to
                     self._backend  = term_._backend     # mess with these
-                    self._contract = term_._contract    # directly like this (rather than via base class)
+                    self._tensor_network = term_._tensor_network    # directly like this (rather than via base class)
                 except:
                     raise TypeError("only tensornet tensors can be summed")
             if (term_._backend is not self._backend) or (term_.shape!=self.shape):
@@ -68,7 +68,7 @@ class tensor_sum(summable_tensor):
                 result = raw(self._tensor_terms[0])                # will produce zero tensor of correct dimensions (should I used primitive_tensor.zeros here?)
             except IndexError:
                 raise ValueError("cannot evaluate empty tensor_sum because no dimension information.  perhaps use primitive_tensor.zeros(shape).")
-        return primitive_tensor(result, self._backend, self._contract)
+        return primitive_tensor(result, self._backend, self._tensor_network)
     def __copy__(self):
         return tensor_sum(self._tensor_terms)    # makes a copy of list with copies of terms (bc both modified by += and *=)
     def __getitem__(self, indices):
@@ -90,13 +90,13 @@ class tensor_sum(summable_tensor):
         try:
             other_shape    = other.shape
             other_backend  = other._backend
-            other_contract = other._contract
+            other_tensor_network = other._tensor_network
         except:
             raise TypeError("only tensornet tensors can be added to a tensornet tensor_sum")
         if len(self._tensor_terms)==0 and self._backend is None:    # must have started as an empty accumulator
             self.shape     = other_shape
             self._backend  = other_backend
-            self._contract = other_contract
+            self._tensor_network = other_tensor_network
         if other_backend is not self._backend:
             raise ValueError("only tensornet tensors with the same backend can be added")
         if other_shape!=self.shape:
@@ -120,16 +120,16 @@ class tensor_sum(summable_tensor):
 # already provided for that backend type).
 # Only this class uses _scalar.  Use * or *= from outside the class.
 class primitive_tensor(summable_tensor):
-    def __init__(self, raw_tensor, backend, contract, _scalar=1):
-        summable_tensor.__init__(self, backend.shape(raw_tensor), backend, contract)
+    def __init__(self, raw_tensor, backend, tensor_network, _scalar=1):
+        summable_tensor.__init__(self, backend.shape(raw_tensor), backend, tensor_network)
         self._scalar  = _scalar    # here so that we can define *= without changing original data
         self._raw_tensor = raw_tensor
     @staticmethod
-    def zeros(shape, backend, contract):
-        return primitive_tensor(backend.zeros(shape), backend, contract)
+    def zeros(shape, backend, tensor_network):
+        return primitive_tensor(backend.zeros(shape), backend, tensor_network)
     #@staticmethod
-    #def scalar_tensor(scalar, backend, contract):
-    #    return primitive_tensor(backend.scalar_tensor(scalar), backend, contract)
+    #def scalar_tensor(scalar, backend, tensor_network):
+    #    return primitive_tensor(backend.scalar_tensor(scalar), backend, tensor_network)
     def _increment(self, result):
         if self._scalar==1:
             self._backend.increment(result, self._raw_tensor)    # do not make a copy just to use as an increment, but we want to ...
@@ -137,12 +137,12 @@ class primitive_tensor(summable_tensor):
             self._backend.increment(result, self._backend.mult(self._scalar, self._raw_tensor))
         return
     def _evaluate(self):
-        return primitive_tensor(self._backend.mult(self._scalar, self._raw_tensor), self._backend, self._contract)    # ... copy the data in case someone (like tensor_sum) modifies the result of raw()
+        return primitive_tensor(self._backend.mult(self._scalar, self._raw_tensor), self._backend, self._tensor_network)    # ... copy the data in case someone (like tensor_sum) modifies the result of raw()
     def __getitem__(self, indices):
         indices = resolve_ellipsis(indices, self.shape)
         indexed_tensor = self._backend.element(self._raw_tensor, indices)
         if any(isinstance(index,slice) for index in indices):
-            new = primitive_tensor(indexed_tensor, self._backend, self._contract, _scalar=self._scalar)
+            new = primitive_tensor(indexed_tensor, self._backend, self._tensor_network, _scalar=self._scalar)
         else:
             new = self._scalar * indexed_tensor    # this is a scalar if we get here
         return new
