@@ -25,7 +25,7 @@ import math
 import numpy
 #import torch
 import tensorly
-from qode.math.tensornet import np_tensor, tl_tensor, tensor_sum, evaluate, increment, raw, scalar_value, contract
+from qode.math.tensornet import np_tensor, tl_tensor, tensor_sum, evaluate, increment, raw, scalar_value
 
 p,q,r,s = 'pqrs'        # lower the number of quotes we need to type
 
@@ -83,9 +83,12 @@ V = prim_tensor.init(V_)
 #   the result will not depend in any way on how they are ordered (not even efficiency).
 # - Scalar arguments can also be given in place of tensors, which multipy the result.
 # - A contraction "label" (often a letter) can be any hashable object that is not an integer.
-AB1    = contract(A(0,p), B(p,1))
-CD1    = contract(C(p,1), D(0,p))
-ABCD1  = contract(AB1(0,p), CD1(p,1))
+#AB1    = contract(A(0,p), B(p,1))
+#CD1    = contract(C(p,1), D(0,p))
+#ABCD1  = contract(AB1(0,p), CD1(p,1))
+AB1    = A(0,p) @ B(p,1)
+CD1    = C(p,1) @ D(0,p)
+ABCD1  = AB1(0,p) @ CD1(p,1)
 ABCD1 *= 2
 
 # The above can also be done by using the @ operator to separate the input tensors.  Just using

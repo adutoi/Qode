@@ -73,7 +73,47 @@ class to_contract(object):
     def divulge(self):    # logically only called from _contract when self._tensors is of length 1
         return self._tensors[0]
     def _call_contract(self):
-        return self._contract(*(to_contract(*tensor, self._contract) for tensor in self._tensors))
+        def _resolve_sum(tensor_factors):
+            # This function turns a contractions of sums into sums of contractions and passes the terms off to self._tensor_network
+            # Implicit type checking is essentially delegated to self._tensor_network.
+            outer_terms = [[]]
+            for factor in tensor_factors:
+                try:
+                    tens, indices = factor.divulge()
+                    inner_factors = tens._tensor_terms
+                except:
+                    for outer_term in outer_terms:
+                        outer_term += [factor]
+                else:
+                    new_outer_terms = []
+                    for outer_term in outer_terms:
+                        for inner_factor in inner_factors:
+                            new_outer_terms += [outer_term + [to_contract(inner_factor, indices, self._contract)]]
+                    outer_terms = new_outer_terms
+            tensor_terms = []
+            for outer_term in outer_terms:
+                tensor_terms += [self._contract(*outer_term)]
+            #
+            #result_hashes = sorted((term._result_hash, i) for i,term in enumerate(tensor_terms))
+            #tensor_terms, tensor_terms_ = [], tensor_terms
+            #previous = None
+            #for result_hash,i in result_hashes:
+            #    if result_hash==previous:
+            #        tensor_terms[-1]._scalar += tensor_terms_[i]._scalar
+            #    else:
+            #        tensor_terms += [tensor_terms_[i]]
+            #    previous = result_hash
+            #
+            if len(tensor_terms)==1:
+                return tensor_terms[0]
+            else:
+                the_sum = tensor_terms[0] + tensor_terms[1]
+                for term in tensor_terms[2:]:
+                    the_sum += term
+                return the_sum
+        args = (to_contract(*tensor, self._contract) for tensor in self._tensors)
+        return _resolve_sum(args)
+        #return self._contract(*(to_contract(*tensor, self._contract) for tensor in self._tensors))
     def __getattr__(self, attr):    # only called for non hard-coded attributes
         # doing it this way instead of defining method named shape lets call be tens.shape instead of tens.shape() [just set it in __init__?]
         if attr=="shape":
