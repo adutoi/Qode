@@ -27,9 +27,6 @@ import numpy
 
 class functions(object):
     @staticmethod
-    def copy_data(tensor):
-        return numpy.array(tensor)
-    @staticmethod
     def scalar_value(tensor):
         return tensor.item()
     @staticmethod

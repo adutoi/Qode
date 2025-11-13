@@ -118,24 +118,18 @@ class tensor_sum(summable_tensor):
 # The tensornet type for the primitive tensors that the user sees and uses and builds networks from.
 # The tensor importantly knows its backend, via a provided module (implemented by the user if not
 # already provided for that backend type).
-# only users ever use copy_data because we never modify here that which we wrap in a primitive_tensor
-# only this class uses _scalar.  Users should use * or *=
+# Only this class uses _scalar.  Use * or *= from outside the class.
 class primitive_tensor(summable_tensor):
-    def __init__(self, raw_tensor, backend, contract, copy_data=False, _scalar=1):
+    def __init__(self, raw_tensor, backend, contract, _scalar=1):
         summable_tensor.__init__(self, backend.shape(raw_tensor), backend, contract)
         self._scalar  = _scalar    # here so that we can define *= without changing original data
-        if copy_data:
-            self._raw_tensor = backend.copy_data(raw_tensor)
-        else:
-            self._raw_tensor = raw_tensor
-    @staticmethod
-    def scalar_tensor(scalar, backend, contract):
-        return primitive_tensor(backend.scalar_tensor(scalar), backend, contract)
+        self._raw_tensor = raw_tensor
     @staticmethod
     def zeros(shape, backend, contract):
         return primitive_tensor(backend.zeros(shape), backend, contract)
-    def copy(self):
-        return primitive_tensor(self._raw_tensor, self._backend, self._contract, copy_data=True)
+    #@staticmethod
+    #def scalar_tensor(scalar, backend, contract):
+    #    return primitive_tensor(backend.scalar_tensor(scalar), backend, contract)
     def _increment(self, result):
         if self._scalar==1:
             self._backend.increment(result, self._raw_tensor)    # do not make a copy just to use as an increment, but we want to ...

@@ -1,4 +1,4 @@
-#    (C) Copyright 2023 Anthony D. Dutoi
+#    (C) Copyright 2023, 2025 Anthony D. Dutoi
 # 
 #    This file is part of Qode.
 # 

@@ -43,9 +43,6 @@ def print_timings(header=None):
 
 class functions(object):
     @staticmethod
-    def copy_data(tensor):
-        return tensorly.copy(tensor)    # Badly implemented in tensorly; raises warning for pytorch.
-    @staticmethod
     def scalar_value(tensor):
         return tensor.item()            # Object-bound method works for numpy and pytorch, but cannot find generic tensorly wrapper.
     @staticmethod

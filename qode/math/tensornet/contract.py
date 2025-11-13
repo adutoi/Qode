@@ -37,17 +37,17 @@ def _contract(*tensor_factors):
             try:
                 scalar *= tens
             except:
-                raise TypeError("argument {} to contract._contract is malformed".format(i))
+                raise TypeError(f"argument {i} to tensornet.contract._contract is malformed")
         else:
             try:
                 if backend is None:
                     backend = tens._backend
                 if tens._backend is not backend:
-                    raise ValueError("argument {} to contract._contract has differing backend than those prior".format(i))
+                    raise ValueError(f"argument {i} to tensornet.contract._contract has differing backend than those prior")
             except AttributeError:
-                raise  TypeError("argument {} to contract._contract does not reference a tensornet tensor".format(i))
+                raise  TypeError(f"argument {i} to tensornet.contract._contract does not reference a tensornet tensor")
             if len(indices)!=len(tens.shape):
-                raise ValueError("argument {} to contract._contract has wrong number of indices specified".format(i))
+                raise ValueError(f"argument {i} to tensornet.contract._contract has wrong number of indices specified")
             try:
                 c = tens._contractions
             except AttributeError:
@@ -63,7 +63,7 @@ def _contract(*tensor_factors):
                     if val not in collector:
                         collector[val] = []    # open a list to collect all same-labeled indices
                 except:
-                    raise TypeError("index label {} (starting from 0) in argument {} to contract._contract is not hashable".format(pos,i))
+                    raise TypeError("index label {} (starting from 0) in argument {} to tensornet.contract._contract is not hashable".format(pos,i))
                 collector[val] += [(tens, pos)]
     # a helper function to merge networks
     def _resolve_primitive_indices(index_list):    # input indices to be set equal (reduced free indices or contracted together)
@@ -86,17 +86,17 @@ def _contract(*tensor_factors):
         try:
             free_index = free_indices_as_dict[i]
         except:
-            raise ValueError("specification of free indices in arguments to contract._contract has a gap")
+            raise ValueError("specification of free indices in arguments to tensornet.contract._contract has a gap")
         try:
             free_indices += [_resolve_primitive_indices(free_index)]
         except ValueError:
-            raise ValueError("incompatible lengths for reduction to free axis {} (starting from 0) in contract._contract".format(i))
+            raise ValueError("incompatible lengths for reduction to free axis {} (starting from 0) in tensornet.contract._contract".format(i))
     # resolve contracted indices in terms of primitive tensors
     for dummy,contraction in new_contractions.items():
         try:
             contractions += [_resolve_primitive_indices(contraction)]
         except ValueError:
-            raise ValueError("incompatible lengths for summation over \"{}\" in contract._contract".format(dummy))
+            raise ValueError("incompatible lengths for summation over \"{}\" in tensornet.contract._contract".format(dummy))
     timings_record("contract")
     return tensor_network(scalar, contractions, free_indices, backend, contract)    # injects 'contract' into tensor_base so they can contract "themselves"
 
