@@ -1,4 +1,4 @@
-#    (C) Copyright 2023 Anthony D. Dutoi
+#    (C) Copyright 2023, 2025 Anthony D. Dutoi
 # 
 #    This file is part of Qode.
 # 
@@ -15,29 +15,28 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
-
-from copy import copy
 from ...util import timer
 
 
 
-def evaluate(tensor):
-    return resolve_contract_ops(tensor)._evaluate()
-
-def increment(result, tensor):    # for incrementing raw tensors of the same shape (implicitly evaluates)
-    return resolve_contract_ops(tensor)._increment(result)
-
-def raw(tensor):
-    return evaluate(tensor)._raw_tensor
-
-def scalar_value(tensor):
-    tensor = resolve_contract_ops(tensor)
-    if len(tensor.shape)>0:
-        raise RuntimeError("cannot take the scalar value of a tensornet tensor with >0 free indices")
-    return tensor._backend.scalar_value(raw(tensor))
-
 def shape(tensor):    # just in case a user expects such an unbound function to exist
     return tensor.shape
+
+def resolve(tensor):
+    return tensor._resolve()
+
+def evaluate(tensor):
+    return tensor._evaluate()
+
+def raw(tensor):
+    return tensor._raw()
+
+def scalar_value(tensor):
+    return tensor._scalar_value()
+
+def increment(raw_result, tensor):    # for incrementing raw tensors of the same shape (implicitly evaluates)
+    return tensor._increment(raw_result)
+
 
 
 
@@ -56,12 +55,6 @@ def resolve_ellipsis(indices, shape):
 
 
 
-def resolve_contract_ops(tensor):
-    try:
-        temp = tensor._call_contract()
-    except AttributeError:
-        temp = tensor
-    return temp
 
 class to_contract(object):
     def __init__(self, tensor, indices, tensor_network, _from_list=None):
@@ -72,7 +65,15 @@ class to_contract(object):
         self._tensor_network = tensor_network
     def divulge(self):    # logically only called from _tensor_network when self._tensors is of length 1
         return self._tensors[0]
-    def _call_contract(self):
+    def _evaluate(self):
+        return self._resolve()._evaluate()
+    def _raw(self):
+        return self._resolve()._raw()
+    def _scalar_value(self):
+        return self._resolve()._scalar_value()
+    def _increment(self, result):
+        return self._resolve()._increment(result)
+    def _resolve(self):
         def _resolve_sum(tensor_factors):
             # This function turns a contractions of sums into sums of contractions and passes the terms off to self._tensor_network
             # Implicit type checking is essentially delegated to self._tensor_network.
@@ -116,15 +117,17 @@ class to_contract(object):
     def __getattr__(self, attr):    # only called for non hard-coded attributes
         # doing it this way instead of defining method named shape lets call be tens.shape instead of tens.shape() [just set it in __init__?]
         if attr=="shape":
-            return self._call_contract().shape
+            return self._resolve().shape
+        if attr=="_backend":
+            return self._resolve()._backend
         else:
             raise AttributeError("'to_contract' object has no attribute '{}'".format(attr))
     def __call__(self, *indices):
-        return self._call_contract()(*indices)
+        return self._resolve()(*indices)
     def __setitem__(self, item):
         raise RuntimeError("elements of tensornet tensors are not assignable")
     def __getitem__(self, indices):
-        return self._call_contract()[indices]
+        return self._resolve()[indices]
     def __imul__(self, other):
         try:
             other_tensors = other._tensors
@@ -159,7 +162,7 @@ class to_contract(object):
     def __neg__(self):
         return self * -1
     def __add__(self, other):
-        return self._call_contract() + other._call_contract()
+        return self._resolve() + other._resolve()
     def __sub__(self, other):
         return self + (-other)
     def __iadd__(self, _):
@@ -169,34 +172,6 @@ class to_contract(object):
 
 
 
-
-# expected to have a backend and a shape (and a scalar if not a sum), everything else is specific to single class
-class tensor_base(object):
-    def __init__(self, shape, backend, tensor_network):
-        self.shape     = shape
-        self._backend  = backend
-        self._tensor_network = tensor_network    # inject the top-most function in the module so that they can contract "themselves"
-    def __setitem__(self, item):
-        raise RuntimeError("elements of tensornet tensors are not assignable")
-    def __call__(self, *indices):
-        return to_contract(self, indices, self._tensor_network)
-    # __mul__, __rmul__, __neg__, and __sub__ use __imul__ from child; multiplication here is always with a scalar
-    def __itruediv__(self, x):
-        self *= (1./x)
-        return self
-    def __mul__(self, x):
-        new = copy(self)
-        new *= x
-        return new
-    def __truediv__(self, x):
-        return self * (1./x)
-    def __rmul__(self, x):
-        return self * x
-    def __neg__(self):
-        return self * -1
-    # the following needs __add__ but cannot define here because no knowledge of tensor_sum
-    def __sub__(self, other):
-        return self + (-other)
 
 
 

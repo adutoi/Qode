@@ -1,4 +1,4 @@
-#    (C) Copyright 2023 Anthony D. Dutoi
+#    (C) Copyright 2023, 2025 Anthony D. Dutoi
 # 
 #    This file is part of Qode.
 # 
@@ -16,42 +16,27 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 import copy
-from .base      import evaluate, raw, scalar_value, resolve_ellipsis, timings_start, timings_record
-from .tensors   import summable_tensor, primitive_tensor
+from ...util import struct
+from .base import evaluate, scalar_value, timings_start, timings_record, resolve_ellipsis
 from .heuristic import heuristic    # how to order contraction executions in a network
 
-_backend_contract_path = False    # if True, let backend handle finding the optimal contraction path upon evaluate() call
 _warned = False                   # have we warned the user yet against asking for individual tensor elements?
 
-def backend_contract_path(TrueFalse):
-    global _backend_contract_path
-    _backend_contract_path = TrueFalse
 
 
-
-# Barebones theory (written much later after a forensic debug battle).  A tensor_network object contains
-# two fundamental pieces of information (and other incidental info).  One is a list of contractions.
-# Each contraction itself is a list of two-tuples; each two-tuple identifies a tensor and the index
-# of that tensor involved in the contraction.  So if a contraction contains two two-tuples, then 
-# two indices are contracted with one another, but there might be more for unusual contractions.
-# The ordering of the list of contractions is irrelevant, as is the ordering of the list of two-tuples
-# that defines a given contraction. The other piece of information is a list of free indices of the result,
-# which correspond to uncontracted indices of the tensors in the network.  This list is ordered, and each
-# free index is itself a list of two-tuples with the same tensor-index structure as the two-tuples that
-# define a contraction.  In the most usual case, each such list corresponding to a free index will be of
-# length one, but if there is more than one tensor index that corresponds to a single free index it is because
-# those indices are set equal to each other and reduced to a single free index.
-
-class tensor_network(summable_tensor):
-    def __init__(self, scalar, contractions, free_indices, backend):
+class logic(object):    # only used to be lazy about not changing indentation
+    @staticmethod
+    def init(scalar, contractions, free_indices, backend):
+        values = struct()
         shape = []
         for free_index in free_indices:
             tens0, pos0 = free_index[0]      # always instantiated by function that checks congruence
             shape += [tens0.shape[pos0]]
-        summable_tensor.__init__(self, tuple(shape), backend, tensor_network)
-        self._scalar = scalar
-        self._contractions = contractions
-        self._free_indices = free_indices
+        values.backend = backend
+        values.shape = tuple(shape)
+        values.scalar = scalar
+        values.contractions = contractions
+        values.free_indices = free_indices
         #
         by_id = {}    # populated by calls to _hashable() below
         def _hashable(prim_lists):
@@ -65,15 +50,16 @@ class tensor_network(summable_tensor):
                     new_prim_list += [(tens_id, pos)]
                 new_prim_lists += [new_prim_list]
             return new_prim_lists
-        contractions = _hashable(self._contractions)
-        free_indices = _hashable(self._free_indices)
-        self._hashable = by_id, contractions, free_indices    # hashable (redundant) catalogs for internal use only
+        contractions = _hashable(values.contractions)
+        free_indices = _hashable(values.free_indices)
+        values.hashable = by_id, contractions, free_indices    # hashable (redundant) catalogs for internal use only
         # Nested tuples of hashable values like that below can automatically be sorted lexicographically, and they can be tested 
         # for equality.  Although false *negatives* can happen, if they are equal, the result is guaranteed to be the same.  This
         # can be useful in sums where permutationally (anti)symmetric tensors are built from asymmetric primitives and then contracted.
         # Redundant terms can be recognized in n*log(n) time by sorting and grouping.
-        self._result_hash = ( tuple(sorted(tuple(sorted((id(tens._raw_tensor), pos) for tens,pos in prim_list)) for prim_list in self._contractions)),
-                                     tuple(tuple(sorted((id(tens._raw_tensor), pos) for tens,pos in prim_list)) for prim_list in self._free_indices) )
+        values.result_hash = ( tuple(sorted(tuple(sorted((id(tens._raw_tensor), pos) for tens,pos in prim_list)) for prim_list in values.contractions)),
+                                     tuple(tuple(sorted((id(tens._raw_tensor), pos) for tens,pos in prim_list)) for prim_list in values.free_indices) )
+        return values
     @staticmethod
     def build(*tensor_factors):
         timings_start()
@@ -149,22 +135,21 @@ class tensor_network(summable_tensor):
             except ValueError:
                 raise ValueError("incompatible lengths for summation over \"{}\" in tensornet.contract._contract".format(dummy))
         timings_record("contract")
-        return tensor_network(scalar, contractions, free_indices, backend)    # injects 'contract' into tensor_base so they can contract "themselves"
-    def _increment(self, result):
-        self._backend.increment(result, raw(self))
-        return
-    def _evaluate(self):
-        if self._scalar==0:    # usually a bad test, but in this case we really mean it.  If it is not exactly zero, there is something to do, and zero can happen (ie, a = 0 * b)
-            return primitive_tensor(self._backend.zeros(self.shape), self._backend, tensor_network)
+        return struct(scalar=scalar, contractions=contractions, free_indices=free_indices, backend=backend)    # injects 'contract' into tensor_base so they can contract "themselves"
+
+    @staticmethod
+    def evaluate(the_tensor, tensor_network, primitive_tensor, _backend_contract_path):
+        if the_tensor._scalar==0:    # usually a bad test, but in this case we really mean it.  If it is not exactly zero, there is something to do, and zero can happen (ie, a = 0 * b)
+            return primitive_tensor(the_tensor._backend.zeros(the_tensor.shape), the_tensor._backend)
         timings_start()
         # It is assumed that all of the tensors in the network are represented by distinct
         # objects, even if they point to the same underlying data.  This is enforced by
         # the contract function, which is the only way for a user to make a tensor_network.
         # Also, the individual primitives have all been forced to have unit scalar by adjusting the overall scalar.
-        by_id, contractions, free_indices = self._hashable
+        by_id, contractions, free_indices = the_tensor._hashable
         #
         if _backend_contract_path:    # All the tensors in one big group
-            do_scalar_mult = False if self._scalar==1 else True
+            do_scalar_mult = False if the_tensor._scalar==1 else True
             do_reduction   = True
             tens_group = tuple(sorted({tens for contraction in contractions for tens,_ in contraction}
                                     | {tens for free_index  in free_indices for tens,_ in free_index }))
@@ -186,14 +171,14 @@ class tensor_network(summable_tensor):
             shapes = {tens:by_id[tens].shape for tens in by_id}
             timings_record("tensor_network._evaluate")
             timings_start()
-            do_scalar_mult, do_reduction, target = heuristic(self._scalar, contraction_groups, index_reduct_groups, shapes)
+            do_scalar_mult, do_reduction, target = heuristic(the_tensor._scalar, contraction_groups, index_reduct_groups, shapes)
             timings_record("heuristic")
         #
         if do_scalar_mult or do_reduction:
             timings_start()
             if do_reduction:    # as if do_scalar_mult is False, which it will be if using tensornet contraction path
                 # print("do_reduction")
-                scalar = self._scalar
+                scalar = the_tensor._scalar
                 other_contractions = []
                 for group,contraction_sublist in contraction_groups.items():
                     if group!=target:
@@ -225,12 +210,12 @@ class tensor_network(summable_tensor):
                 mapping = {target:list(range(len(by_id[target].shape)))}
             args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()]
             if do_scalar_mult:
-                args += [self._scalar]
+                args += [the_tensor._scalar]
                 scalar = 1
             timings_record("tensor_network._evaluate")
             #
             timings_start()
-            new_tens = primitive_tensor(self._backend.contract(*args), self._backend, tensor_network)
+            new_tens = primitive_tensor(the_tensor._backend.contract(*args), the_tensor._backend)
             timings_record("backend.contract")
             if _backend_contract_path:
                 return new_tens    # bottom out immediately ... there must be a more elegant way of switching between all these options!
@@ -255,7 +240,7 @@ class tensor_network(summable_tensor):
             if len(new_tens.shape)==0:
                 scalar *= scalar_value(new_tens)    # in no way not a scalar (unlike a 1x1x1x... tensor).  note that new_tens itself is now forgotten
             timings_record("tensor_network._evaluate")
-            return evaluate(tensor_network(scalar, new_contractions, new_free_indices, self._backend))    # recur
+            return evaluate(tensor_network(scalar, new_contractions, new_free_indices, the_tensor._backend))    # recur
         else:    # must be a single tensor (?) or an outer product
             if len(free_indices)>0:
                 timings_start()
@@ -265,21 +250,23 @@ class tensor_network(summable_tensor):
                     if tens not in mapping:
                         mapping[tens] = [None]*len(by_id[tens].shape)
                     mapping[tens][pos] = i
-                if self._scalar!=1:                                     # eventually deprecate.
+                if the_tensor._scalar!=1:                                     # eventually deprecate.
                     raise RuntimeError("scalar should be 1, right?")    # pretty sure this has to be true
-                args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()]    # self._scalar is 1 by now?
+                args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()]    # the_tensor._scalar is 1 by now?
                 timings_record("tensor_network._evaluate")
                 timings_start()
-                Z = primitive_tensor(self._backend.contract(*args), self._backend, tensor_network)                     # bottom out (might give a 0-dim tensor; this is intended)
+                Z = primitive_tensor(the_tensor._backend.contract(*args), the_tensor._backend)                     # bottom out (might give a 0-dim tensor; this is intended)
                 timings_record("backend.contract")
                 return Z
             else:    # there is nothing left but the scalar
-                return primitive_tensor(self._backend.scalar_tensor(self._scalar), self._backend, tensor_network)
-    def __getitem__(self, indices):
-        indices = resolve_ellipsis(indices, self.shape)
+                return primitive_tensor(the_tensor._backend.scalar_tensor(the_tensor._scalar), the_tensor._backend)
+
+    @staticmethod
+    def element(the_tensor, indices, tensor_network):
+        indices = resolve_ellipsis(indices, the_tensor.shape)
         full = slice(None)    # the slice produced by [:] with no limits
-        scalar = self._scalar
-        by_id, contractions, free_indices = self._hashable
+        scalar = the_tensor._scalar
+        by_id, contractions, free_indices = the_tensor._hashable
         slice_indices = {}
         for index,free_index in zip(indices,free_indices):
             if index!=full:
@@ -314,7 +301,7 @@ class tensor_network(summable_tensor):
                 new_free_indices += [_map_indices(free_index)]
         for contraction in contractions:
             new_contractions += [_map_indices(contraction)]
-        new = tensor_network(scalar, new_contractions, new_free_indices, self._backend)
+        new = tensor_network(scalar, new_contractions, new_free_indices, the_tensor._backend)
         if len(new_free_indices)==0:
             global _warned
             if not _warned:
@@ -323,6 +310,3 @@ class tensor_network(summable_tensor):
             return scalar_value(new)
         else:
             return new
-    def __imul__(self, x):
-        self._scalar *= x
-        return self
