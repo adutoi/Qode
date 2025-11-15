@@ -42,6 +42,7 @@ def print_timings(header=None):
 # "is" operator between the class defined here.
 
 class functions(object):
+    name = "tensorly"
     @staticmethod
     def scalar_value(tensor):
         return tensor.item()            # Object-bound method works for numpy and pytorch, but cannot find generic tensorly wrapper.
@@ -60,9 +61,12 @@ class functions(object):
         return
     @staticmethod
     def mult(scalar, tensor):
-        return scalar * tensor
+        result = scalar * tensor
+        if len(functions.shape(tensor))==0:
+            result = functions.scalar_tensor(result)
+        return result
     @staticmethod
-    def element(tensor, indices):
+    def slice(tensor, indices):
         return tensor[indices]
     @staticmethod
     def str(tensor):

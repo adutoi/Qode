@@ -17,8 +17,9 @@
 #
 
 from .base           import evaluate, increment, raw, scalar_value, shape, initialize_timer, print_timings
-from .tensors        import tensor_sum, backend_contract_path    # tensor_sum() can initialize an empty accumulator for += use
+from .tensors        import backend_contract_path
 from .tensors        import primitive_tensor as _primitive_tensor
+from .tensors        import tensor_sum as _tensor_sum
 from .backends       import dummy_backend, numpy_backend, tensorly_backend
 
 print("""
@@ -106,12 +107,14 @@ class primitive_tensor_factory(object):
         self._data_unwrap = data_unwrap
     def init(self, data):
         raw_tensor = self._data_wrap(data)
-        return _primitive_tensor(raw_tensor, self._backend)    # injects 'contract' into tensor_base so it they can contract "themselves"
+        return _primitive_tensor(self._backend, raw_tensor)
     def zeros(self, shape):
-        return _primitive_tensor.zeros(shape, self._backend)
+        return _primitive_tensor.zeros(self._backend, shape)
+    def accumulator(self):    # define shape? just use "0"?
+        return _tensor_sum(self._backend)
     #def scalar_tensor(self, scalar):
-    #    return _primitive_tensor.scalar_tensor(scalar, self._backend)
-    def data(tensor):
+    #    return _primitive_tensor.scalar_tensor(self._backend, scalar)
+    def data(self, tensor):
         return self._data_unwrap(raw(tensor))
 
 dummy_tensor = primitive_tensor_factory(dummy_backend.functions)

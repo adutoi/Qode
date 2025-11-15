@@ -17,7 +17,7 @@
 #
 import copy
 from ...util import struct
-from .base import evaluate, scalar_value, timings_start, timings_record, resolve_ellipsis
+from .base import evaluate, scalar_value, timings_start, timings_record
 from .heuristic import heuristic    # how to order contraction executions in a network
 
 _warned = False                   # have we warned the user yet against asking for individual tensor elements?
@@ -26,7 +26,7 @@ _warned = False                   # have we warned the user yet against asking f
 
 class logic(object):    # only used to be lazy about not changing indentation
     @staticmethod
-    def init(scalar, contractions, free_indices, backend):
+    def init(backend, scalar, contractions, free_indices):
         values = struct()
         shape = []
         for free_index in free_indices:
@@ -70,7 +70,7 @@ class logic(object):    # only used to be lazy about not changing indentation
                 tens, indices = factor.divulge()
             except:
                 tens, indices = factor, None    # assume it is a raw scalar argument
-            if indices is None:                 # assume it was either a raw scalar or a scalar wrapped in to_contract
+            if indices is None:                 # assume it was either a raw scalar or a scalar wrapped in an expression
                 try:
                     scalar *= tens
                 except:
@@ -135,12 +135,12 @@ class logic(object):    # only used to be lazy about not changing indentation
             except ValueError:
                 raise ValueError("incompatible lengths for summation over \"{}\" in tensornet.contract._contract".format(dummy))
         timings_record("contract")
-        return struct(scalar=scalar, contractions=contractions, free_indices=free_indices, backend=backend)    # injects 'contract' into tensor_base so they can contract "themselves"
+        return struct(backend=backend, scalar=scalar, contractions=contractions, free_indices=free_indices)
 
     @staticmethod
     def evaluate(the_tensor, tensor_network, primitive_tensor, _backend_contract_path):
         if the_tensor._scalar==0:    # usually a bad test, but in this case we really mean it.  If it is not exactly zero, there is something to do, and zero can happen (ie, a = 0 * b)
-            return primitive_tensor(the_tensor._backend.zeros(the_tensor.shape), the_tensor._backend)
+            return primitive_tensor(the_tensor._backend, the_tensor._backend.zeros(the_tensor.shape))
         timings_start()
         # It is assumed that all of the tensors in the network are represented by distinct
         # objects, even if they point to the same underlying data.  This is enforced by
@@ -215,7 +215,7 @@ class logic(object):    # only used to be lazy about not changing indentation
             timings_record("tensor_network._evaluate")
             #
             timings_start()
-            new_tens = primitive_tensor(the_tensor._backend.contract(*args), the_tensor._backend)
+            new_tens = primitive_tensor(the_tensor._backend, the_tensor._backend.contract(*args))
             timings_record("backend.contract")
             if _backend_contract_path:
                 return new_tens    # bottom out immediately ... there must be a more elegant way of switching between all these options!
@@ -240,7 +240,7 @@ class logic(object):    # only used to be lazy about not changing indentation
             if len(new_tens.shape)==0:
                 scalar *= scalar_value(new_tens)    # in no way not a scalar (unlike a 1x1x1x... tensor).  note that new_tens itself is now forgotten
             timings_record("tensor_network._evaluate")
-            return evaluate(tensor_network(scalar, new_contractions, new_free_indices, the_tensor._backend))    # recur
+            return evaluate(tensor_network(the_tensor._backend, scalar, new_contractions, new_free_indices))    # recur
         else:    # must be a single tensor (?) or an outer product
             if len(free_indices)>0:
                 timings_start()
@@ -255,15 +255,14 @@ class logic(object):    # only used to be lazy about not changing indentation
                 args = [(by_id[tens]._raw_tensor, *indices) for tens,indices in mapping.items()]    # the_tensor._scalar is 1 by now?
                 timings_record("tensor_network._evaluate")
                 timings_start()
-                Z = primitive_tensor(the_tensor._backend.contract(*args), the_tensor._backend)                     # bottom out (might give a 0-dim tensor; this is intended)
+                Z = primitive_tensor(the_tensor._backend, the_tensor._backend.contract(*args))                     # bottom out (might give a 0-dim tensor; this is intended)
                 timings_record("backend.contract")
                 return Z
             else:    # there is nothing left but the scalar
-                return primitive_tensor(the_tensor._backend.scalar_tensor(the_tensor._scalar), the_tensor._backend)
+                return primitive_tensor(the_tensor._backend, the_tensor._backend.scalar_tensor(the_tensor._scalar))
 
     @staticmethod
-    def element(the_tensor, indices, tensor_network):
-        indices = resolve_ellipsis(indices, the_tensor.shape)
+    def slice(the_tensor, indices, tensor_network):
         full = slice(None)    # the slice produced by [:] with no limits
         scalar = the_tensor._scalar
         by_id, contractions, free_indices = the_tensor._hashable
@@ -301,7 +300,7 @@ class logic(object):    # only used to be lazy about not changing indentation
                 new_free_indices += [_map_indices(free_index)]
         for contraction in contractions:
             new_contractions += [_map_indices(contraction)]
-        new = tensor_network(scalar, new_contractions, new_free_indices, the_tensor._backend)
+        new = tensor_network(the_tensor._backend, scalar, new_contractions, new_free_indices)
         if len(new_free_indices)==0:
             global _warned
             if not _warned:

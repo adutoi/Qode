@@ -26,6 +26,7 @@ import numpy
 # "is" operator between the class defined here.
 
 class functions(object):
+    name = "numpy"
     @staticmethod
     def scalar_value(tensor):
         return tensor.item()
@@ -44,9 +45,12 @@ class functions(object):
         return
     @staticmethod
     def mult(scalar, tensor):
-        return scalar * tensor
+        result = scalar * tensor
+        if len(tensor.shape)==0:
+            result = functions.scalar_tensor(result)
+        return result
     @staticmethod
-    def element(tensor, indices):
+    def slice(tensor, indices):
         return tensor[indices]
     @staticmethod
     def str(tensor):

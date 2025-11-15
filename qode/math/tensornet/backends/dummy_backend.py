@@ -35,6 +35,7 @@ class dummy(object):
         return tensor
 
 class functions(object):
+    name = "dummy"
     @staticmethod
     def scalar_value(tensor):
         if len(tensor.shape)!=0:
@@ -60,7 +61,7 @@ class functions(object):
     def mult(scalar, tensor):
         return dummy(scalar*tensor.scalar, tensor.name, tensor.shape)
     @staticmethod
-    def element(tensor, indices):
+    def slice(tensor, indices):
         if len(indices)!=len(tensor.shape):
             raise ValueError(f"{len(indices)} were given to obtain element of {len(tensor.shape)}-dimensional tensor")
         return 0
