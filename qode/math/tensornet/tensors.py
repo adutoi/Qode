@@ -113,7 +113,7 @@ class tensor_base(object):
     #
     def __getitem__(self, indices):
         indices = resolve_ellipsis(indices, len(self._shape))
-        return resolve(self)._resolved_slice(indices)
+        return resolve(self)._resolved_subscript(indices)
     def __setitem__(self, indices):
         raise TypeError("slices and/or elements of tensornet tensors are not assignable")
     #
@@ -251,14 +251,14 @@ class tensor_sum(resolved_tensor):
                     subterms = [term]
                 self._terms += subterms    # no copies because never modified in-place
     def __mul__(self, x):
-        return tensor_sum(terms=[x*term for term in self._terms])    # changes scalar prefactors, not raw tensors.  forces copies
+        return tensor_sum(self._backend, terms=[x*term for term in self._terms])    # changes scalar prefactors, not raw tensors.  forces copies
     def __str__(self):
         str_terms = "\n+\n".join([str(term) for term in self._terms])
         return f"tensornet.tensor_sum(backend = {self._backend.name}\n{str_terms}\n)"
-    def _resolved_slice(self, indices):
+    def _resolved_subscript(self, indices):
         indexed_tensors = [term[indices] for term in self._terms]
         if any(isinstance(index,slice) for index in indices):
-            new = tensor_sum(terms=indexed_tensors)
+            new = tensor_sum(self._backend, terms=indexed_tensors)
         else:
             new = sum(indexed_tensors)    # should be a list of scalars if we get here
         return new
@@ -293,8 +293,8 @@ class primitive_tensor(resolved_tensor):
     def __str__(self):
         data = indent(self._backend.str(self._raw_tensor), "    ")
         return f"tensornet.primitive_tensor(backend = {self._backend.name}\n{self._scalar} *\n{data}\n)"
-    def _resolved_slice(self, indices):
-        indexed_tensor = self._backend.slice(self._raw_tensor, indices)
+    def _resolved_subscript(self, indices):
+        indexed_tensor = self._backend.subscript(self._raw_tensor, indices)
         if any(isinstance(index,slice) for index in indices):
             new = primitive_tensor(self._backend, indexed_tensor, _scalar=self._scalar)
         else:
@@ -346,8 +346,8 @@ class tensor_network(resolved_tensor):
         new = tensor_network(self._backend, self._scalar, self._contractions, self._free_indices)
         new._scalar *= x
         return new
-    def _resolved_slice(self, indices):
-        return network_logic.logic.slice(self, indices, tensor_network)
+    def _resolved_subscript(self, indices):
+        return network_logic.logic.subscript(self, indices, tensor_network)
     def _resolved_evaluate(self):
         return network_logic.logic.evaluate(self, tensor_network, primitive_tensor, _backend_contract_path)
 

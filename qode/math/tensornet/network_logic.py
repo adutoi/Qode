@@ -262,7 +262,7 @@ class logic(object):    # only used to be lazy about not changing indentation
                 return primitive_tensor(the_tensor._backend, the_tensor._backend.scalar_tensor(the_tensor._scalar))
 
     @staticmethod
-    def slice(the_tensor, indices, tensor_network):
+    def subscript(the_tensor, indices, tensor_network):
         full = slice(None)    # the slice produced by [:] with no limits
         scalar = the_tensor._scalar
         by_id, contractions, free_indices = the_tensor._hashable

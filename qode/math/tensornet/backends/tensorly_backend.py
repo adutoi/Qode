@@ -66,7 +66,7 @@ class functions(object):
             result = functions.scalar_tensor(result)
         return result
     @staticmethod
-    def slice(tensor, indices):
+    def subscript(tensor, indices):
         return tensor[indices]
     @staticmethod
     def str(tensor):

@@ -7,7 +7,6 @@ get rid of divulge (because scalar now explicit?)
 move more code to "where the wild things are" ... clean up interface only
 
 better names in backends
-rename slice
 implement __str__
 primitive_tensor check function
 
