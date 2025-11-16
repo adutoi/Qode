@@ -19,7 +19,8 @@ from ...util import timer
 
 _timings = None
 
-
+class ContractionError(ValueError):    # this is mostly for debugging
+    pass
 
 def shape(tensor):    # just in case a user expects such an unbound function to exist
     return tensor.shape

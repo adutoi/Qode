@@ -16,7 +16,7 @@
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from .base           import evaluate, increment, raw, scalar_value, shape, initialize_timer, print_timings
+from .base           import evaluate, increment, raw, scalar_value, shape, initialize_timer, print_timings, ContractionError
 from .tensors        import backend_contract_path
 from .tensors        import primitive_tensor as _primitive_tensor
 from .tensors        import tensor_sum as _tensor_sum
@@ -108,12 +108,8 @@ class primitive_tensor_factory(object):
     def init(self, data):
         raw_tensor = self._data_wrap(data)
         return _primitive_tensor(self._backend, raw_tensor)
-    def zeros(self, shape):
-        return _primitive_tensor.zeros(self._backend, shape)
-    def accumulator(self):    # define shape? just use "0"?
-        return _tensor_sum(self._backend)
-    #def scalar_tensor(self, scalar):
-    #    return _primitive_tensor.scalar_tensor(self._backend, scalar)
+    def zeros(self, shape=None):    # if shape is None, take it from first term added.
+        return _tensor_sum(self._backend, shape=shape)
     def data(self, tensor):
         return self._data_unwrap(raw(tensor))
 

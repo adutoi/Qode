@@ -17,7 +17,7 @@
 #
 from textwrap import indent
 from qode.util import struct
-from .base import resolve, evaluate, raw, scalar_value, increment, resolve_ellipsis
+from .base import resolve, evaluate, raw, scalar_value, increment, resolve_ellipsis, ContractionError
 from . import network_logic
 
 _backend_contract_path = False    # if True, let backend handle finding the optimal contraction path upon evaluate() call
@@ -96,7 +96,7 @@ class tensor_base(object):
     def __sub__(self, other):
         return self + (-other)
     def __add__(self, other):
-        return tensor_sum(self._backend, [resolve(self), resolve(other)])
+        return tensor_sum(self._backend, terms=[resolve(self), resolve(other)])    # shape implied by terms (which must match)
     #
     # The final layer of (lazy) mathematics is contraction.  When __call__ is applied to a tensor, it prepares that tensor for
     # contraction using @, which is defined only for contraction_expression because one *must* first specify free and contraction
@@ -161,7 +161,7 @@ class contraction_expression(tensor_base):
                         dims_catalog[index].priors += (arg,dim)
                     else:
                         priors = "\n".join([f"dimension {dim_} of argument {arg_}" for arg_,dim_ in dims_catalog[index].priors])
-                        raise ValueError(f"argument {arg} to contraction_expression has incompatible length for contraction or reduction with:\n{priors}")
+                        raise ContractionError(f"\ncontraction_expression:  error for identifier \"{index}\" (all enumerations start at 0)\ndimension {dim} of argument {arg} has incompatible length ({tensor.shape[dim]}) for contraction or reduction with dimension(s) of length {dims_catalog[index].length} in:\n{priors}")
         free_indices = sorted([index for index in dims_catalog if isinstance(index,int)])
         shape = [] if (len(free_indices)==0) else [None]*(free_indices[-1]+1)
         for index in free_indices:
@@ -189,7 +189,7 @@ class contraction_expression(tensor_base):
             for factor in tensor_factors:
                 try:
                     tens, indices = factor.divulge()
-                    inner_factors = tens._tensor_terms
+                    inner_factors = tens._terms
                 except:
                     for outer_term in outer_terms:
                         outer_term += [factor]
@@ -199,25 +199,25 @@ class contraction_expression(tensor_base):
                         for inner_factor in inner_factors:
                             new_outer_terms += [outer_term + [contraction_expression(self._backend, [(inner_factor, indices)])]]
                     outer_terms = new_outer_terms
-            tensor_terms = []
+            terms = []
             for outer_term in outer_terms:
-                tensor_terms += [tensor_network.build(*outer_term)]
+                terms += [tensor_network.build(*outer_term)]
             #
-            #result_hashes = sorted((term._result_hash, i) for i,term in enumerate(tensor_terms))
-            #tensor_terms, tensor_terms_ = [], tensor_terms
+            #result_hashes = sorted((term._result_hash, i) for i,term in enumerate(terms))
+            #terms, terms_ = [], terms
             #previous = None
             #for result_hash,i in result_hashes:
             #    if result_hash==previous:
-            #        tensor_terms[-1]._scalar += tensor_terms_[i]._scalar
+            #        terms[-1]._scalar += terms_[i]._scalar
             #    else:
-            #        tensor_terms += [tensor_terms_[i]]
+            #        terms += [terms_[i]]
             #    previous = result_hash
             #
-            if len(tensor_terms)==1:
-                return tensor_terms[0]
+            if len(terms)==1:
+                return terms[0]
             else:
-                the_sum = tensor_terms[0] + tensor_terms[1]
-                for term in tensor_terms[2:]:
+                the_sum = terms[0] + terms[1]
+                for term in terms[2:]:
                     the_sum += term
                 return the_sum
         args = [self._scalar] + [contraction_expression(self._backend, [tens_idx]) for tens_idx in self._tensors_indices]
@@ -237,41 +237,42 @@ class resolved_tensor(tensor_base):
 # in an informational sense, this is the most basic tensor, since all it does is store a list
 # of tensor_networks and primitive_tensors.
 class tensor_sum(resolved_tensor):
-    def __init__(self, backend, tensor_terms=None):
-        resolved_tensor.__init__(self, backend)    # assume empty instaniated as ...
-        self._tensor_terms = []                    # ... empty accumulator ...
-        if tensor_terms is not None:               # ... unless some terms are given
-            for term in tensor_terms:
-                self._assert_same_backend(term)        # otherwise raises exception
-                self._attempt_set_shape(term.shape)    # will initiate if started empty
+    def __init__(self, backend, terms=None, shape=None):
+        resolved_tensor.__init__(self, backend)    # assume empty instaniated as empty/blank ...
+        self._attempt_set_shape(shape)             # ... (though can specify shape, and ok if again set to None) ...
+        self._terms = []                           # ... as accumulator ...
+        if terms is not None:                      # ... unless some terms are given
+            for term in terms:
+                self._assert_same_backend(term)        # <- otherwise raises exception
+                self._attempt_set_shape(term.shape)    # <- exception if mismatch, but will initiate if starts undefined
                 try:
-                    subterms = term._tensor_terms
+                    subterms = term._terms
                 except AttributeError:
                     subterms = [term]
-                self._tensor_terms += subterms    # no copies because never modified in-place
+                self._terms += subterms    # no copies because never modified in-place
     def __mul__(self, x):
-        return tensor_sum([x*tensor for tensor in self._tensor_terms])    # changes scalar prefactors, not raw tensors.  forces copies
+        return tensor_sum(terms=[x*term for term in self._terms])    # changes scalar prefactors, not raw tensors.  forces copies
     def __str__(self):
-        terms = "\n+\n".join([str(term) for term in self._tensor_terms])
-        return f"tensornet.tensor_sum(backend = {self._backend.name}\n{terms}\n)"
+        str_terms = "\n+\n".join([str(term) for term in self._terms])
+        return f"tensornet.tensor_sum(backend = {self._backend.name}\n{str_terms}\n)"
     def _resolved_slice(self, indices):
-        indexed_tensors = [tens[indices] for tens in self._tensor_terms]
+        indexed_tensors = [term[indices] for term in self._terms]
         if any(isinstance(index,slice) for index in indices):
-            new = tensor_sum(indexed_tensors)
+            new = tensor_sum(terms=indexed_tensors)
         else:
             new = sum(indexed_tensors)    # should be a list of scalars if we get here
         return new
     def _resolved_evaluate(self):
-        if len(self._tensor_terms)>0:
-            raw_result = None
-            for term in self._tensor_terms:
-                if term._scalar!=0:
-                    if raw_result is None:  raw_result = raw(term)
-                    else:                   increment(raw_result, term)
-            if raw_result is None:
+        raw_result = None
+        for term in self._terms:
+            if term._scalar!=0:
+                if raw_result is None:  raw_result = raw(term)
+                else:                   increment(raw_result, term)
+        if raw_result is None:
+            if self._shape is not None:    # might have been given explicitly or taken from a tensor that was multiplied by zero
                 raw_result = self._backend.zeros(self._shape)
-        else:
-            raise ValueError("Cannot evaluate empty tensor_sum because no dimension information.\nPerhaps use primitive_tensor.zeros(shape).")
+            else:
+                raise ValueError("Cannot evaluate empty tensor_sum because no dimension information.\nPerhaps use primitive_tensor_factory.zeros(shape).")
         return primitive_tensor(self._backend, raw_result)
 
 
@@ -286,12 +287,6 @@ class primitive_tensor(resolved_tensor):
         resolved_tensor.__init__(self, backend, backend.shape(raw_tensor))
         self._raw_tensor = raw_tensor
         self._scalar     = _scalar    # so that we can define * without changing raw tensor data
-    @staticmethod
-    def zeros(backend, shape):
-        return primitive_tensor(backend, backend.zeros(shape))
-    #@staticmethod
-    #def scalar_tensor(backend, scalar):
-    #    return primitive_tensor(backend, backend.scalar_tensor(scalar))
     def __mul__(self, x):
         new = primitive_tensor(self._backend, self._raw_tensor, _scalar=x*self._scalar)
         return new
