@@ -1,8 +1,6 @@
 post overhaul
 --------------
 
-restructure classes to function with overrides but document in situ
-pay attention to efficiency (no extraneous calls to primitive_tensor._raw after network_tensor._raw
 get rid of divulge (because scalar now explicit?)
 move more code to "where the wild things are" ... clean up interface only
 
@@ -10,13 +8,16 @@ better names in backends
 implement __str__
 primitive_tensor check function
 
-contraction_expression(None) <- forces exceptions (ie, index gaps) closer to use location
-
 field type
 document thing about scalar_tensor (or scalar_tensor class? -- also homogenizes scalars in contraction factors)
 backend base class for "normal" tensors
 
 clean up documentation
+
+# TODO: field is a backend choice and scalars are of that type
+# get rid of scalars in tensor_network parsing either by introducing a new tensor wrapper (scalar_tensor)
+# or just make it a primitive_tensor that happens to be a scalar tensor, or by adjusting the scalar field
+# explicitly
 
 ===
 
@@ -29,7 +30,7 @@ safe to assume that the use of @ results in something that is a tensor in every 
 (eg, it may not even have a valid shape, due to missing free indices).  By the same token,
 since the = operator in python only means "bind" (as opposed to, say, C++), there is no
 way for the user to indicate when a tensor description is "done".
-(correction, use __call__(None))
+(correction, now use __call__())
   The dark corner here
 is that the result of several @ operations remembers the names of its contraction indices
 and if that result is bound to a variable, it could be @-ed with more tensors, inadvertently

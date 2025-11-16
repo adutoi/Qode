@@ -25,29 +25,25 @@ def backend_contract_path(TrueFalse):
     global _backend_contract_path
     _backend_contract_path = TrueFalse
 
-# TODO: field is a backend choice and scalars are of that type
-# get rid of scalars in tensor_network parsing either by introducing a new tensor wrapper (scalar_tensor)
-# or just make it a primitive_tensor that happens to be a scalar tensor, or by adjusting the scalar field
-# explicitly
-
 # We have 4 different types of top-level tensors
 #   contraction_expression
 #   tensor_sum
 #   tensor_network
 #   primitive_tensor
-# All of these are built off of tensor_base.  The first three are built off of resolved_tensor (which
+# All of these are built off of tensor_base.  The latter three are built off of resolved_tensor (which
 # is based on tensor_base) indicating that they are completely well-formed.  contraction_expression
-# behaves like a tensor so long as it is well formed but it could be incomplete.  The basic problem
+# behaves like a tensor so long as it is well formed, but it could be incomplete.  The basic problem
 # is that, when connecting a bunch of tensors with @, it is not possible to automatically discern
-# when the string is finished (ie when all target free indices are present).  Only the user can decide
+# when the string is finished (ie, when all intended target free indices are present).  Only the user can decide
 # when to "close" the string, but we don't want to make the user do this explicitly.  Therefore,
-# we allow this incomplete class whose resolution as a tensor_network (it always resolves to a
-# tensor_network) it triggered by taking another action on it that is not @ or *.  A tensor_sum
+# we allow this incomplete class, whose *resolution* is a tensor_network (it always resolves to a
+# tensor_network). This is triggered by taking another action on it that is not @ or *.  A tensor_sum
 # can only contain types primitive_tensor and tensor_network.  An attempt to include another
-# tensor_sum will cause it to be expanded out as a single sum.  A tensor_network can only contain
-# type primitive_tensor, and including one network into another network causes explicit expansion
+# tensor_sum will cause it to be expanded out as a single sum (and contraction_expression will 
+# be automatically resolved to tensor_network).  A tensor_network can only contain
+# type primitive_tensor, and including one network (or contraction_expression) into another network causes explicit expansion
 # into a single network.  Taking this together, this means that a tensor_network cannot contain a 
-# tensor_sum.  An attempt to put a tensor_sum into a tensor_network will result in the topology
+# tensor_sum.  An attempt to put a tensor_sum into a tensor_network will result in the hierarchy
 # being swapped to a sum of networks.  The reason for this is purely practical.  At the moment,
 # I cannot think of a way of finding the best path to evaluate a network that contains sums.
 
@@ -90,7 +86,8 @@ class tensor_base(object):
         return self * -1
     #
     # In addition to __neg__ (and therefore __mul__) above, these additionally require that any contraction_expression first be resolved,
-    # but not evaluated.  Along with (implicit) __iadd__ and __isub__, this completes all the basic mathematical operations outside
+    # but not evaluated.  The resolve() function (via .resolve()) is implemented specifically for contraction_expression and is just
+    # a pass-through for the others. Along with (implicit) __iadd__ and __isub__, this completes all the basic mathematical operations outside
     # of contraction, all of which are lazy in terms of evaluation.
     #
     def __sub__(self, other):
@@ -101,40 +98,50 @@ class tensor_base(object):
     # The final layer of (lazy) mathematics is contraction.  When __call__ is applied to a tensor, it prepares that tensor for
     # contraction using @, which is defined only for contraction_expression because one *must* first specify free and contraction
     # indices in order to contract.  If no contraction indices are specified, the free indices could just specify permutation.
-    # Contracting a contraction_expression with another tensor first triggers resolution of the existing expression into a closed
-    # and error-checked tensor_network (which has no memory of the "letters" used to specify the internal contractions).
+    # Contracting a contraction_expression with another tensor first triggers resolution of any existing existing expression
+    # into a closed and error-checked tensor_network (which has no memory of the "letters" used to specify the internal contractions).
+    # Also, the otherwise useless act of using __call__ with an empty argument string (otherwise only valid for scalar tensors)
+    # simply forces resolution to a error-checked tensor_network.  This is *logically* equivalent (though the return type is different)
+    # to giving the trivial (non)permutation of the correct length, which is *mathematically* equivalent to doing nothing (assuming the
+    # contractions string is, in fact, valid.
     #
     def __call__(self, *indices):
-        return contraction_expression(self._backend, [(resolve(self), indices)])
+        if indices==():
+            return resolve(self)
+        else:
+            return contraction_expression(self._backend, [(resolve(self), indices)])
     #
-    # These are the non-mathematical operations (rather informational) which also require contraction_expression expression to
-    # be resolved.  If the indices specify a specific element, it could also then result in evaluation.  We try to be clear that
-    # slicing can only be implemented for child classes of resolved_tensor (ie, anything but contraction_expression).
+    # These are the non-mathematical operations (rather informational) which also require any contraction_expression expression to
+    # be resolved.  After resolution, the action is implemented separately for each child of resolved_tensor, which overrides __getitem__
+    # (ie, the default implementation is only for contraction_expression, but this documents also that it is an expected tensor behavior).
+    # __setitem__ is never overridden.  If the indices specify a specific element, it could also then result in evaluation.
     #
-    def __getitem__(self, indices):
+    def __getitem__(self, indices):    # called only by contraction_expression (overridden by resolved_tensor types)
         indices = resolve_ellipsis(indices, len(self._shape))
-        return resolve(self)._resolved_subscript(indices)
+        return resolve(self)[indices]
     def __setitem__(self, indices):
         raise TypeError("slices and/or elements of tensornet tensors are not assignable")
     #
-    # The methods below are the tensornet specific manipulations (ie not the usual mathematical or informational operators expected
-    # for all tensors), which are accessible by unbound functions.  The sibling function _resolve has a different implementation for
-    # both contraction_expression and the children of resolved_tensor and so cannot be implemented here at all.  All of the functions
-    # below either are the evaluation itself or require it.  We try to be clear that, after resolving a contraction_expression, further 
-    # evaluation can only be implemented for child classes of resolved_tensor (and it is different for each implementation, btw), and that
-    # after evaluation further manipulation must be handled by primitive_tensor.  (It is also more clear than overrideing base class names)
+    # The methods below are the tensornet-specific stacke manipulations (ie not the usual mathematical or informational operators expected
+    # for all tensors), which are accessible by unbound functions.  The function _resolve has a different implementation for
+    # both contraction_expression and the children of resolved_tensor and is implemented only in the child classes.
+    # The function evaluate() automatically triggers resolve() for contraction_expression, but after that, it is handled by the child classes
+    # of resolved_tensor that override it separately (ie, this implementation is only called by contraction_expression). In turn,
+    # raw(), scalar_value(), and increment() each trigger evaluate(), which must result in a primitive_tensor, which further handles
+    # the requested task on the evaluated data via overridden functions.  Therefore, tensor_sum and tensor_network need not implement these
+    # three functions.
     #
-    def _evaluate(self):
-        return resolve(self)._resolved_evaluate()
-    def _raw(self):
-        return evaluate(self)._primitive_raw()
-    def _scalar_value(self):
-        return evaluate(self)._primitive_scalar_value()
-    def _increment(self, raw_result):
-        return evaluate(self)._primitive_increment(raw_result)
-
-
-
+    def _resolve(self):     # overridden by all child classes
+        raise NotImplementedError
+    def _evaluate(self):    # called only by contraction_expression (overridden by resolved_tensor types)
+        return evaluate(resolve(self))
+    def _raw(self):                              # All of these are overridden by primitive_tensor (but only primitive_tensor).
+        #return raw(evaluate(self))              # <- Better code aesthetics, but raw() on primitive_tensor result of evaluate() forces a copy.
+        return evaluate(self)._raw_tensor        # <- More efficient, since we know that evaluate() called on a tensor_sum or tensor_network ...
+    def _scalar_value(self):                     #    ... returns freshly generated data that would be transient (never bound to a variable) ...
+        return scalar_value(evaluate(self))      #    ... if immediately copied via raw().  Since the ._scalar member equals 1, .raw_tensor ...
+    def _increment(self, raw_result):            #    ... is all that is needed, and copying is unnecessary.
+        increment(raw_result, evaluate(self))    #
 
 
 
@@ -227,8 +234,7 @@ class contraction_expression(tensor_base):
 
 
 class resolved_tensor(tensor_base):
-    def __init__(self, backend, shape=None):
-        tensor_base.__init__(self, backend, shape)
+    # __init__ is inherited
     def _resolve(self):
         return self
 
@@ -255,18 +261,18 @@ class tensor_sum(resolved_tensor):
     def __str__(self):
         str_terms = "\n+\n".join([str(term) for term in self._terms])
         return f"tensornet.tensor_sum(backend = {self._backend.name}\n{str_terms}\n)"
-    def _resolved_subscript(self, indices):
+    def __getitem__(self, indices):
         indexed_tensors = [term[indices] for term in self._terms]
         if any(isinstance(index,slice) for index in indices):
             new = tensor_sum(self._backend, terms=indexed_tensors)
         else:
             new = sum(indexed_tensors)    # should be a list of scalars if we get here
         return new
-    def _resolved_evaluate(self):
+    def _evaluate(self):
         raw_result = None
         for term in self._terms:
             if term._scalar!=0:
-                if raw_result is None:  raw_result = raw(term)
+                if raw_result is None:  raw_result = raw(term)    # will make copy of internal data of a primitive_tensor
                 else:                   increment(raw_result, term)
         if raw_result is None:
             if self._shape is not None:    # might have been given explicitly or taken from a tensor that was multiplied by zero
@@ -293,26 +299,26 @@ class primitive_tensor(resolved_tensor):
     def __str__(self):
         data = indent(self._backend.str(self._raw_tensor), "    ")
         return f"tensornet.primitive_tensor(backend = {self._backend.name}\n{self._scalar} *\n{data}\n)"
-    def _resolved_subscript(self, indices):
+    def __getitem__(self, indices):
         indexed_tensor = self._backend.subscript(self._raw_tensor, indices)
         if any(isinstance(index,slice) for index in indices):
             new = primitive_tensor(self._backend, indexed_tensor, _scalar=self._scalar)
         else:
             new = self._scalar * indexed_tensor    # this is a scalar if we get here
         return new
-    def _resolved_evaluate(self):
+    def _evaluate(self):
         return self
-    def _primitive_raw(self):
-        return self._backend.mult(self._scalar, self._raw_tensor)    # forces copy even if self._scalar==1 in case returned value is modified (by user or tensor_sum)
-    def _primitive_scalar_value(self):
+    def _raw(self):
+        return self._backend.mult(self._scalar, self._raw_tensor)    # force copy even if self._scalar==1 in case value modified (by user or tensor_sum)
+    def _scalar_value(self):
         if len(self.shape)>0:
             raise ValueError("cannot take the scalar value of a tensornet tensor with >0 free indices")
         return self._scalar * self._backend.scalar_value(self._raw_tensor)
-    def _primitive_increment(self, raw_result):
-        if self._scalar==1:
-            self._backend.increment(raw_result, self._raw_tensor)
-        else:
+    def _increment(self, raw_result):
+        if self._scalar!=1:
             self._backend.increment(raw_result, self._backend.mult(self._scalar, self._raw_tensor))
+        else:
+            self._backend.increment(raw_result, self._raw_tensor)    # avoid making unnecessary copy just to use as increment
 
 
 
@@ -346,8 +352,9 @@ class tensor_network(resolved_tensor):
         new = tensor_network(self._backend, self._scalar, self._contractions, self._free_indices)
         new._scalar *= x
         return new
-    def _resolved_subscript(self, indices):
+    def __getitem__(self, indices):
         return network_logic.logic.subscript(self, indices, tensor_network)
-    def _resolved_evaluate(self):
+    def _evaluate(self):
+        # TODO:  need to make sure that internal data is copied in the event of trivial network (single primitive_tensor)
+        # TODO:  and that scalar is 1
         return network_logic.logic.evaluate(self, tensor_network, primitive_tensor, _backend_contract_path)
-
