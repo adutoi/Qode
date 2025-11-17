@@ -15,9 +15,14 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
+
+# This is where the wild things are.  All the actual implementation code is buried in here,
+# separated from the interface C++ style.  Is still kind of a heap of chaos, but at least
+# the highlevel stuff is there to guide what one expects here.  Clean up someday . . .
+
 import copy
 from ...util import struct
-from .base import evaluate, scalar_value, timings_start, timings_record
+from .base import evaluate, scalar_value, timings_start, timings_record, ContractionError
 from .heuristic import heuristic    # how to order contraction executions in a network
 
 _warned = False                   # have we warned the user yet against asking for individual tensor elements?
@@ -61,47 +66,36 @@ class logic(object):    # only used to be lazy about not changing indentation
                                      tuple(tuple(sorted((id(tens._raw_tensor), pos) for tens,pos in prim_list)) for prim_list in values.free_indices) )
         return values
     @staticmethod
-    def build(*tensor_factors):
+    def build(*tensors_indices):
         timings_start()
-        # collect arguments
         scalar, contractions, new_contractions, free_indices, free_indices_as_dict, backend = 1, [], {}, [], {}, None
-        for i,factor in enumerate(tensor_factors):
+        for i,(tens, indices) in enumerate(tensors_indices):
             try:
-                tens, indices = factor.divulge()
-            except:
-                tens, indices = factor, None    # assume it is a raw scalar argument
-            if indices is None:                 # assume it was either a raw scalar or a scalar wrapped in an expression
-                try:
-                    scalar *= tens
-                except:
-                    raise TypeError(f"argument {i} to tensornet.contract._contract is malformed")
+                if backend is None:
+                    backend = tens._backend
+                if tens._backend is not backend:
+                    raise ValueError(f"argument {i} to tensornet.contract._contract has differing backend than those prior")
+            except AttributeError:
+                raise  TypeError(f"argument {i} to tensornet.contract._contract does not reference a tensornet tensor")
+            if len(indices)!=len(tens.shape):
+                raise ValueError(f"argument {i} to tensornet.contract._contract has wrong number of indices specified")
+            try:
+                c = tens._contractions
+            except AttributeError:
+                tens = copy.copy(tens)    # must be a primitive tensor, so, make distinct object (for hashing), ...
+                scalar *= tens._scalar    # ... accumulate scalar factors, ...
+                tens._scalar = 1          # ... and renormalize copy (for aesthetics; expected and never referenced in a network_tensor)
             else:
+                contractions += c         # inherit contractions from input tensors ...
+                scalar *= tens._scalar    # ... and accumulate scalar factors
+            for pos,val in enumerate(indices):
+                collector = free_indices_as_dict if isinstance(val,int) else new_contractions
                 try:
-                    if backend is None:
-                        backend = tens._backend
-                    if tens._backend is not backend:
-                        raise ValueError(f"argument {i} to tensornet.contract._contract has differing backend than those prior")
-                except AttributeError:
-                    raise  TypeError(f"argument {i} to tensornet.contract._contract does not reference a tensornet tensor")
-                if len(indices)!=len(tens.shape):
-                    raise ValueError(f"argument {i} to tensornet.contract._contract has wrong number of indices specified")
-                try:
-                    c = tens._contractions
-                except AttributeError:
-                    tens = copy.copy(tens)    # must be a primitive tensor, so, make distinct object (for hashing), ...
-                    scalar *= tens._scalar    # ... accumulate scalar factors, ...
-                    tens._scalar = 1          # ... and renormalize copy (for aesthetics; expected and never referenced in a network_tensor)
-                else:
-                    contractions += c         # inherit contractions from input tensors ...
-                    scalar *= tens._scalar    # ... and accumulate scalar factors
-                for pos,val in enumerate(indices):
-                    collector = free_indices_as_dict if isinstance(val,int) else new_contractions
-                    try:
-                        if val not in collector:
-                            collector[val] = []    # open a list to collect all same-labeled indices
-                    except:
-                        raise TypeError("index label {} (starting from 0) in argument {} to tensornet.contract._contract is not hashable".format(pos,i))
-                    collector[val] += [(tens, pos)]
+                    if val not in collector:
+                        collector[val] = []    # open a list to collect all same-labeled indices
+                except:
+                    raise TypeError("index label {} (starting from 0) in argument {} to tensornet.contract._contract is not hashable".format(pos,i))
+                collector[val] += [(tens, pos)]
         # a helper function to merge networks
         def _resolve_primitive_indices(index_list):    # input indices to be set equal (reduced free indices or contracted together)
             axis_length = None
@@ -309,3 +303,71 @@ class logic(object):    # only used to be lazy about not changing indentation
             return scalar_value(new)
         else:
             return new
+
+    @staticmethod
+    def resolve(scalar, tensors_indices, tensor_network):
+        # This function turns a contractions of sums into sums of contractions and passes the terms off to tensor_network
+        # Implicit type checking is essentially delegated to tensor_network.
+        outer_terms = [[]]
+        for tens, indices in tensors_indices:
+            try:
+                inner_factors = tens._terms
+            except:
+                for outer_term in outer_terms:
+                    outer_term += [(tens, indices)]
+            else:
+                new_outer_terms = []
+                for outer_term in outer_terms:
+                    for inner_factor in inner_factors:
+                        new_outer_terms += [outer_term + [(inner_factor, indices)]]
+                outer_terms = new_outer_terms
+        terms = []
+        for outer_term in outer_terms:
+            terms += [scalar * tensor_network(**logic.build(*outer_term))]
+        #
+        #result_hashes = sorted((term._result_hash, i) for i,term in enumerate(terms))
+        #terms, terms_ = [], terms
+        #previous = None
+        #for result_hash,i in result_hashes:
+        #    if result_hash==previous:
+        #        terms[-1]._scalar += terms_[i]._scalar
+        #    else:
+        #        terms += [terms_[i]]
+        #    previous = result_hash
+        #
+        if len(terms)==1:
+            return terms[0]
+        else:
+            the_sum = terms[0] + terms[1]
+            for term in terms[2:]:
+                the_sum += term
+            return the_sum
+
+    @staticmethod
+    def get_shape(tensors_indices, check_backend):
+        # dims_catalog has the following structure
+        #   {index: struct(length, priors=[(arg,dim), ...]), ...}
+        # where index is the int or "letter" identifier of the eventual free or contraction index, repsectively,
+        # length is the previously recorded length of the associated dimension, and priors records where such prior
+        # lengths were found, in which arg is the positional identifier of the tensor in the tensors_indices input,
+        # and dim is the position of the respective index on that tensor.  A given tensor (arg) may show up
+        # multiple times in a given priors array.
+        dims_catalog = {}
+        for arg,(tensor,indices) in enumerate(tensors_indices):
+            check_backend(tensor)    # otherwise raises exception
+            if len(indices)!=len(tensor.shape):
+                raise ValueError(f"argument {arg} to tensornet.contraction_expression has wrong number of indices specified ({len(indices)} given, {len(tensor.shape)} expected).")
+            for dim,index in enumerate(indices):
+                if index not in dims_catalog:
+                    dims_catalog[index] = struct(length=tensor.shape[dim], priors=[(arg,dim)])
+                else:
+                    if tensor.shape[dim]==dims_catalog[index].length:
+                        dims_catalog[index].priors += (arg,dim)
+                    else:
+                        priors = "\n".join([f"dimension {dim_} of argument {arg_}" for arg_,dim_ in dims_catalog[index].priors])
+                        raise ContractionError(f"\ncontraction_expression:  error for identifier \"{index}\" (all enumerations start at 0)\ndimension {dim} of argument {arg} has incompatible length ({tensor.shape[dim]}) for contraction or reduction with dimension(s) of length {dims_catalog[index].length} in:\n{priors}")
+        free_indices = sorted([index for index in dims_catalog if isinstance(index,int)])
+        shape = [] if (len(free_indices)==0) else [None]*(free_indices[-1]+1)
+        for index in free_indices:
+            shape[index] = dims_catalog[index].length
+        return shape

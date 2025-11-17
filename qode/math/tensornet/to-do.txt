@@ -1,23 +1,28 @@
 post overhaul
 --------------
 
-get rid of divulge (because scalar now explicit?)
-move more code to "where the wild things are" ... clean up interface only
+document thing about scalar_tensor
+OR
+a new tensor class called scalar_tensor which is the result of any operation that reduces to
+a scalar (recognized from shape).  the difference between this an the usual scalar type is that it is mutable (which 
+is very important for evaluating tensor_sum
 
-better names in backends
-implement __str__
-primitive_tensor check function
+implement __str__ for all tensors
+check that internal data is copied in the event of trivial network (single primitive_tensor) and that scalar is 1
 
-field type
-document thing about scalar_tensor (or scalar_tensor class? -- also homogenizes scalars in contraction factors)
-backend base class for "normal" tensors
+backend:
+	allow variable field type (could have a name?)
+        backend base class with more things implemented for "normal" backends
+	        scalar_value and scalar_tensor = pass
+		raw_check = pass (user can check that input tensors are as expected)
+		increment -> +=
+		mult -> *
+		subscript -> []
+		shape -> .shape
+		str -> str
+		field = float
 
 clean up documentation
-
-# TODO: field is a backend choice and scalars are of that type
-# get rid of scalars in tensor_network parsing either by introducing a new tensor wrapper (scalar_tensor)
-# or just make it a primitive_tensor that happens to be a scalar tensor, or by adjusting the scalar field
-# explicitly
 
 ===
 

@@ -17,13 +17,15 @@
 #
 from textwrap import indent
 from qode.util import struct
-from .base import resolve, evaluate, raw, scalar_value, increment, resolve_ellipsis, ContractionError
+from .base import resolve, evaluate, raw, scalar_value, increment, resolve_ellipsis
 from . import network_logic
 
 _backend_contract_path = False    # if True, let backend handle finding the optimal contraction path upon evaluate() call
 def backend_contract_path(TrueFalse):
     global _backend_contract_path
     _backend_contract_path = TrueFalse
+
+
 
 # We have 4 different types of top-level tensors
 #   contraction_expression
@@ -48,6 +50,7 @@ def backend_contract_path(TrueFalse):
 # I cannot think of a way of finding the best path to evaluate a network that contains sums.
 
 
+
 # Expected to have a backend and a shape (if requested), and be able to participate in tensor arithmetic.
 # Everything else is implementation specific.
 class tensor_base(object):
@@ -59,7 +62,7 @@ class tensor_base(object):
         self._shape = shape    # initialization can be delayed if determined by as-of-yet unknown constituent terms or factors
     def _assert_same_backend(self, other):
         if self._backend is not other._backend:
-            raise TypeError(f"attempted operation between tensors with different backends: {self._backend.__name__} and {other._backend.__name__}")
+            raise TypeError(f"attempted operation between tensors with different backends: {self._backend.name} and {other._backend.name}")
     def _attempt_set_shape(self, shape):
         if self._shape is None:    # ok if this is the first ...
             self._shape = shape    # ... or only attempt
@@ -150,29 +153,7 @@ class contraction_expression(tensor_base):
         tensor_base.__init__(self, backend)
         self._scalar = _scalar
         self._tensors_indices = tensors_indices
-        # dims_catalog has the following structure
-        #   {index: struct(length, priors=[(arg,dim), ...]), ...}
-        # where index is the int or "letter" identifier of the eventual free or contraction index, repsectively,
-        # length is the previously recorded length of the associated dimension, and priors records where such prior
-        # lengths were found, in which arg is the positional identifier of the tensor in the tensors_indices input,
-        # and dim is the position of the respective index on that tensor.  A given tensor (arg) may show up
-        # multiple times in a given priors array.
-        dims_catalog = {}
-        for arg,(tensor,indices) in enumerate(tensors_indices):
-            self._assert_same_backend(tensor)    # otherwise raises exception
-            for dim,index in enumerate(indices):
-                if index not in dims_catalog:
-                    dims_catalog[index] = struct(length=tensor.shape[dim], priors=[(arg,dim)])
-                else:
-                    if tensor.shape[dim]==dims_catalog[index].length:
-                        dims_catalog[index].priors += (arg,dim)
-                    else:
-                        priors = "\n".join([f"dimension {dim_} of argument {arg_}" for arg_,dim_ in dims_catalog[index].priors])
-                        raise ContractionError(f"\ncontraction_expression:  error for identifier \"{index}\" (all enumerations start at 0)\ndimension {dim} of argument {arg} has incompatible length ({tensor.shape[dim]}) for contraction or reduction with dimension(s) of length {dims_catalog[index].length} in:\n{priors}")
-        free_indices = sorted([index for index in dims_catalog if isinstance(index,int)])
-        shape = [] if (len(free_indices)==0) else [None]*(free_indices[-1]+1)
-        for index in free_indices:
-            shape[index] = dims_catalog[index].length
+        shape = network_logic.logic.get_shape(tensors_indices, self._assert_same_backend)    # checks backend and contraction lengths
         self._attempt_set_shape(tuple(shape))
     def __mul__(self, x):
         try:
@@ -186,50 +167,8 @@ class contraction_expression(tensor_base):
         except:
             raise TypeError(f"@ not defined between contraction_expression and {type(other)}.\nUse * or *= for multiplication by a scalar.")
         return contraction_expression(self._backend, new_tensors_indices, self._scalar)
-    def divulge(self):    # logically only called from _tensor_network when self._tensors_indices is of length 1
-        return self._tensors_indices[0]
     def _resolve(self):
-        def _resolve_sum(tensor_factors):
-            # This function turns a contractions of sums into sums of contractions and passes the terms off to tensor_network
-            # Implicit type checking is essentially delegated to tensor_network.
-            outer_terms = [[]]
-            for factor in tensor_factors:
-                try:
-                    tens, indices = factor.divulge()
-                    inner_factors = tens._terms
-                except:
-                    for outer_term in outer_terms:
-                        outer_term += [factor]
-                else:
-                    new_outer_terms = []
-                    for outer_term in outer_terms:
-                        for inner_factor in inner_factors:
-                            new_outer_terms += [outer_term + [contraction_expression(self._backend, [(inner_factor, indices)])]]
-                    outer_terms = new_outer_terms
-            terms = []
-            for outer_term in outer_terms:
-                terms += [tensor_network.build(*outer_term)]
-            #
-            #result_hashes = sorted((term._result_hash, i) for i,term in enumerate(terms))
-            #terms, terms_ = [], terms
-            #previous = None
-            #for result_hash,i in result_hashes:
-            #    if result_hash==previous:
-            #        terms[-1]._scalar += terms_[i]._scalar
-            #    else:
-            #        terms += [terms_[i]]
-            #    previous = result_hash
-            #
-            if len(terms)==1:
-                return terms[0]
-            else:
-                the_sum = terms[0] + terms[1]
-                for term in terms[2:]:
-                    the_sum += term
-                return the_sum
-        args = [self._scalar] + [contraction_expression(self._backend, [tens_idx]) for tens_idx in self._tensors_indices]
-        return _resolve_sum(args)
-
+        return network_logic.logic.resolve(self._scalar, self._tensors_indices, tensor_network)
 
 
 
@@ -237,6 +176,44 @@ class resolved_tensor(tensor_base):
     # __init__ is inherited
     def _resolve(self):
         return self
+
+
+
+# The tensornet type for the primitive tensors that the user sees and uses and builds networks from.
+# The tensor importantly knows its backend, via a provided module (implemented by the user if not
+# already provided for that backend type).
+# Only this class uses _scalar.  Use * or *= from outside the class.
+class primitive_tensor(resolved_tensor):
+    def __init__(self, backend, raw_tensor, _scalar=1):
+        resolved_tensor.__init__(self, backend, backend.shape(raw_tensor))
+        self._raw_tensor = raw_tensor
+        self._scalar     = _scalar    # so that we can define * without changing raw tensor data
+    def __mul__(self, x):
+        new = primitive_tensor(self._backend, self._raw_tensor, _scalar=x*self._scalar)
+        return new
+    def __getitem__(self, indices):
+        indexed_tensor = self._backend.subscript(self._raw_tensor, indices)
+        if any(isinstance(index,slice) for index in indices):
+            new = primitive_tensor(self._backend, indexed_tensor, _scalar=self._scalar)
+        else:
+            new = self._scalar * indexed_tensor    # this is a scalar if we get here
+        return new
+    def __str__(self):
+        data = indent(self._backend.str(self._raw_tensor), "    ")
+        return f"tensornet.primitive_tensor(backend = {self._backend.name}\n{self._scalar} *\n{data}\n)"
+    def _evaluate(self):
+        return self
+    def _raw(self):
+        return self._backend.mult(self._scalar, self._raw_tensor)    # force copy even if self._scalar==1 in case value modified (by user or tensor_sum)
+    def _scalar_value(self):
+        if len(self.shape)>0:
+            raise ValueError("cannot take the scalar value of a tensornet tensor with >0 free indices")
+        return self._scalar * self._backend.scalar_value(self._raw_tensor)
+    def _increment(self, raw_result):
+        if self._scalar!=1:
+            self._backend.increment(raw_result, self._backend.mult(self._scalar, self._raw_tensor))
+        else:
+            self._backend.increment(raw_result, self._raw_tensor)    # avoid making unnecessary copy just to use as increment
 
 
 
@@ -258,9 +235,6 @@ class tensor_sum(resolved_tensor):
                 self._terms += subterms    # no copies because never modified in-place
     def __mul__(self, x):
         return tensor_sum(self._backend, terms=[x*term for term in self._terms])    # changes scalar prefactors, not raw tensors.  forces copies
-    def __str__(self):
-        str_terms = "\n+\n".join([str(term) for term in self._terms])
-        return f"tensornet.tensor_sum(backend = {self._backend.name}\n{str_terms}\n)"
     def __getitem__(self, indices):
         indexed_tensors = [term[indices] for term in self._terms]
         if any(isinstance(index,slice) for index in indices):
@@ -268,6 +242,9 @@ class tensor_sum(resolved_tensor):
         else:
             new = sum(indexed_tensors)    # should be a list of scalars if we get here
         return new
+    def __str__(self):
+        str_terms = "\n+\n".join([str(term) for term in self._terms])
+        return f"tensornet.tensor_sum(backend = {self._backend.name}\n{str_terms}\n)"
     def _evaluate(self):
         raw_result = None
         for term in self._terms:
@@ -280,45 +257,6 @@ class tensor_sum(resolved_tensor):
             else:
                 raise ValueError("Cannot evaluate empty tensor_sum because no dimension information.\nPerhaps use primitive_tensor_factory.zeros(shape).")
         return primitive_tensor(self._backend, raw_result)
-
-
-
-
-# The tensornet type for the primitive tensors that the user sees and uses and builds networks from.
-# The tensor importantly knows its backend, via a provided module (implemented by the user if not
-# already provided for that backend type).
-# Only this class uses _scalar.  Use * or *= from outside the class.
-class primitive_tensor(resolved_tensor):
-    def __init__(self, backend, raw_tensor, _scalar=1):
-        resolved_tensor.__init__(self, backend, backend.shape(raw_tensor))
-        self._raw_tensor = raw_tensor
-        self._scalar     = _scalar    # so that we can define * without changing raw tensor data
-    def __mul__(self, x):
-        new = primitive_tensor(self._backend, self._raw_tensor, _scalar=x*self._scalar)
-        return new
-    def __str__(self):
-        data = indent(self._backend.str(self._raw_tensor), "    ")
-        return f"tensornet.primitive_tensor(backend = {self._backend.name}\n{self._scalar} *\n{data}\n)"
-    def __getitem__(self, indices):
-        indexed_tensor = self._backend.subscript(self._raw_tensor, indices)
-        if any(isinstance(index,slice) for index in indices):
-            new = primitive_tensor(self._backend, indexed_tensor, _scalar=self._scalar)
-        else:
-            new = self._scalar * indexed_tensor    # this is a scalar if we get here
-        return new
-    def _evaluate(self):
-        return self
-    def _raw(self):
-        return self._backend.mult(self._scalar, self._raw_tensor)    # force copy even if self._scalar==1 in case value modified (by user or tensor_sum)
-    def _scalar_value(self):
-        if len(self.shape)>0:
-            raise ValueError("cannot take the scalar value of a tensornet tensor with >0 free indices")
-        return self._scalar * self._backend.scalar_value(self._raw_tensor)
-    def _increment(self, raw_result):
-        if self._scalar!=1:
-            self._backend.increment(raw_result, self._backend.mult(self._scalar, self._raw_tensor))
-        else:
-            self._backend.increment(raw_result, self._raw_tensor)    # avoid making unnecessary copy just to use as increment
 
 
 
@@ -344,10 +282,6 @@ class tensor_network(resolved_tensor):
         self._free_indices = values.free_indices
         self._hashable = values.hashable
         self._result_hash = values.result_hash
-    @staticmethod
-    def build(*tensor_factors):
-        values = network_logic.logic.build(*tensor_factors)
-        return tensor_network(**values)
     def __mul__(self, x):
         new = tensor_network(self._backend, self._scalar, self._contractions, self._free_indices)
         new._scalar *= x
@@ -355,6 +289,4 @@ class tensor_network(resolved_tensor):
     def __getitem__(self, indices):
         return network_logic.logic.subscript(self, indices, tensor_network)
     def _evaluate(self):
-        # TODO:  need to make sure that internal data is copied in the event of trivial network (single primitive_tensor)
-        # TODO:  and that scalar is 1
         return network_logic.logic.evaluate(self, tensor_network, primitive_tensor, _backend_contract_path)
