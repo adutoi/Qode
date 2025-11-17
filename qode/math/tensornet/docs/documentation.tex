@@ -1,0 +1,290 @@
+%    (C) Copyright 2023, 2025 Anthony D. Dutoi
+% 
+%    This file is part of Qode.
+% 
+%    Qode is free software: you can redistribute it and/or modify
+%    it under the terms of the GNU General Public License as published by
+%    the Free Software Foundation, either version 3 of the License, or
+%    (at your option) any later version.
+% 
+%    Qode is distributed in the hope that it will be useful,
+%    but WITHOUT ANY WARRANTY; without even the implied warranty of
+%    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%    GNU General Public License for more details.
+% 
+%    You should have received a copy of the GNU General Public License
+%    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
+%
+\documentclass[12pt,letterpaper]{article}
+\setlength{\pdfpagewidth}{\paperwidth}
+\setlength{\pdfpageheight}{\paperheight}
+\setlength{\textheight}{24cm}
+\setlength{\textwidth}{17cm}
+\addtolength{\topmargin}{-2.5cm}
+\addtolength{\hoffset}{-1.6cm}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\lstdefinestyle{codestyle}{
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+}
+\lstset{style=codestyle}
+
+\begin{document}
+
+\title{TensorNet Subpackage:\\Usage and Coding Documentation}
+\author{\copyright~ Copyright 2023, 2025 Anthony D. Dutoi}
+\date{}
+\maketitle
+
+This file is part of \texttt{Qode}.
+ 
+\texttt{Qode} is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+ 
+\texttt{Qode} is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+ 
+You should have received a copy of the GNU General Public License
+along with \texttt{Qode}.  If not, see \url{http://www.gnu.org/licenses/}.
+
+
+
+		\section{Quick Start}
+
+The following code is imported directly from \texttt{tensornet/tests/tutorial.py}.
+It is in the \texttt{tests/} directory because running it and checking the output
+ according to the embedded comments serves as a quick (but not exhaustive) test
+ that the subpackage is working correctly.
+It is named \texttt{tutorial.py} because it is heavily commented to illustrate
+ basic usage.
+
+\lstinputlisting[language=Python]{../tests/tutorial.py}
+
+		\section{More Stuff}
+
+In here should also be the outline of \lstinline{tensor_base} and an example of a backend interface class.
+
+Also, we should start with some overview of the file/directory structure.
+
+	\subsection{Original introduction to \texttt{tensors.py}}
+
+We have 4 different types of top-level tensors
+  \lstinline{contraction_expression}
+  \lstinline{tensor_sum}
+  \lstinline{tensor_network}
+  \lstinline{primitive_tensor}
+All of these are built off of \lstinline{tensor_base}.  The latter three are built off of \lstinline{resolved_tensor} (which
+is based on \lstinline{tensor_base}) indicating that they are completely well-formed.  \lstinline{contraction_expression}
+behaves like a tensor so long as it is well formed, but it could be incomplete.  The basic problem
+is that, when connecting a bunch of tensors with @, it is not possible to automatically discern
+when the string is finished (ie, when all intended target free indices are present).  Only the user can decide
+when to "close" the string, but we don't want to make the user do this explicitly.  Therefore,
+we allow this incomplete class, whose *resolution* is a \lstinline{tensor_network} (it always resolves to a
+\lstinline{tensor_network}). This is triggered by taking another action on it that is not @ or *.  A \lstinline{tensor_sum}
+can only contain types \lstinline{primitive_tensor} and \lstinline{tensor_network}.  An attempt to include another
+\lstinline{tensor_sum} will cause it to be expanded out as a single sum (and \lstinline{contraction_expression} will 
+be automatically resolved to \lstinline{tensor_network}).  A \lstinline{tensor_network} can only contain
+type \lstinline{primitive_tensor}, and including one network (or \lstinline{contraction_expression}) into another network causes explicit expansion
+into a single network.  Taking this together, this means that a \lstinline{tensor_network} cannot contain a 
+\lstinline{tensor_sum}.  An attempt to put a \lstinline{tensor_sum} into a \lstinline{tensor_network} will result in the hierarchy
+being swapped to a sum of networks.  The reason for this is purely practical.  At the moment,
+I cannot think of a way of finding the best path to evaluate a network that contains sums.
+
+	\subsection{Original introduction to \texttt{tensor\_network} in \texttt{tensors.py}}
+
+Barebones theory (written much later after a forensic debug battle).  A \lstinline{tensor_network} object contains
+two fundamental pieces of information (and other incidental info).  One is a list of contractions.
+Each contraction itself is a list of two-tuples; each two-tuple identifies a tensor and the index
+of that tensor involved in the contraction.  So if a contraction contains two two-tuples, then 
+two indices are contracted with one another, but there might be more for unusual contractions.
+The ordering of the list of contractions is irrelevant, as is the ordering of the list of two-tuples
+that defines a given contraction. The other piece of information is a list of free indices of the result,
+which correspond to uncontracted indices of the tensors in the network.  This list is ordered, and each
+free index is itself a list of two-tuples with the same tensor-index structure as the two-tuples that
+define a contraction.  In the most usual case, each such list corresponding to a free index will be of
+length one, but if there is more than one tensor index that corresponds to a single free index it is because
+those indices are set equal to each other and reduced to a single free index.
+
+
+	\subsection{Original introduction to \texttt{primitive\_tensor\_factory} in \texttt{\_\_init\_\_.py}}
+
+Philosopy:  A backend (in the sense of the value of the argument backend below) is a class that
+contains static methods that perform basic operations on objects that represent tensors of a specific
+type. These will henceforth be called backend tensors.  Tensornet then uses the backend functions to
+manipulate the backend tensors according to what is encoded by its high-level syntax.  Objects of the
+class defined below are factories for the primitive tensornet tensors which each wrap a backend tensor
+(and never modifies it).  An important point is that a given backend can have multiple factories
+depending on how what a user is doing.
+
+The creation of a tensornet primitive tensor should only take place via a factory (which is why
+that class name is "hidden" here with the underscore convention) because this is the mechanism by
+which a backend tensor is associated with its backend functions and the utility for contraction creation.
+In the most basic case, this creation is done by the .init() method (not \lstinline{.__init__}, which creates the 
+factory).  The method .zeros() is a convenience function for creation of a tensornet primitive storing
+a new backend tensor (via a backend method) so the user need not create such a zero tensor first and
+then "wrap" it (\lstinline{.scalar_tensor()} is similar and was added for completion, but commenting it out essentially
+documents that we have not yet found a use case ... the necessity for the backend to be able to create
+such a thing however has to do with obeying expectations about type uniformity).
+
+Finally we come to the arguments \lstinline{data_wrap} and \lstinline{data_unwrap}, the method .data(), and the idea of multiple
+factories for the same backend.  It is important that tensornet works only with a notion of backend
+tensors and the functions it is given for them without knowing anything further about their properties.
+But the user may be working with some abstracted backend tensors.  Although they contain, or
+somehow represent the existence of, a specific concrete tensor (eg, numpy, tensorly, pytorch), they 
+do not have the usual expected behavior (e.g., [] might not even get an element).  We will call such 
+things meta tensors, it might be very inconvenient for the user to make their in-house meta tensor behave 
+exactly like a concrete tensor, right down to letting a numpy.ndarray (etc) be instantiated from it.  It
+will also be very inconvenient if the user has to always use the unbound function raw() and then afterward
+extract the concrete data for cooperation with other linear algebra libraries.  The converse is also true
+that it will be annoyingly repetitive to always create the meta tensor from a concrete tensor from elsewhere,
+and then pass that to the factory.  So, therefore, a factory can be created that takes the functions
+\lstinline{data_wrap} and \lstinline{data_unwrap}.  Although their actions are not constrained as such, the idea is that \lstinline{data_wrap}
+is a function that takes a concrete tensor and returns an object of the meta tensor type with which
+backend works, and \lstinline{data_unwrap} does the opposite, extracting and returning (by reference) the concrete
+tensor represented (eg, contained within) the meta tensor.  The convenience function .data() called
+on a tensornet tensor causes evaluation of the (potential?) network (sum?) and returns directly the concrete
+tensor associated with the result.  By default, \lstinline{data_wrap} and \lstinline{data_unwrap} are just pass-throughs,
+which means that .data() is just an alias for the unbound function raw(), which forces evaluation and
+returns a backend tensor (which is typically already a concrete tensor type).  Since this automatic
+wrapping and unwrapping might not always be the desired behavior, more than one factory can be defined,
+per need.
+
+Addendum 1:  There is no requirement that a meta tensor is not itself also a concrete type, and that
+this concrete type might be initialized from multiple other concrete types, which might not even be
+different than its own type.  So if we interpret the concrete and meta layers to both be tensorly,
+where the meta layer can be initialized also from numpy or pytorch (etc), then there it is a perfectly
+clean for the user to provide as \lstinline{data_wrap} a function that makes a tensorly tensor from some input
+which may or may not be of tensorly type), and to leave \lstinline{data_unwrap} as the default pass-through.
+
+Addendum2:  One question that can be asked about the design is: why am I giving in a separated
+backend with functions that perform manipulations on a tensor, rather than just insisting that backend
+tensors have certain properties, like += (which would also make the insides of tensornet prettier).
+The answer is that one might have enough serious work to do in the abstracted/meta backend already,
+without having to define yet more operations that make the thing look almost like a tensor, but not
+completely.  One can imagine various inheritance and virtual method schemes, but one is always going
+to end up in one of two places: 1. Forcing the user to make a new class for their backend tensors
+(and then maybe always, even when using "normal" tensors), or 2. automating the creation of the 
+backend tensors with the expected operators in terms of some other/divorced set of instructions.
+In case 2, we are back where we started from the user point of view, though the insides of tensornet
+look nicer (for the price of another file/class and layer of abstraction).
+
+Addendum 3: The \lstinline{.__init__()} method used to take a \lstinline{copy_data} argument which meant that the factory should
+copy the provided primitive before storing it as an argument for further use.  Probably unusual, but
+a user might do this if they intended on modifying that primitive for some other use while it was still
+in use by the tensornet code (you never know ...).  This can now be done by the user with the \lstinline{data_wrap}
+option.
+
+
+
+
+		\section{To Do}
+
+document thing about \lstinline{scalar_tensor}
+OR
+a new tensor class called \lstinline{scalar_tensor} which is the result of any operation that reduces to
+a scalar (recognized from shape).  the difference between this an the usual scalar type is that it is mutable (which 
+is very important for evaluating \lstinline{tensor_sum}
+
+implement \lstinline{__str__} for all tensors
+check that internal data is copied in the event of trivial network (single \lstinline{primitive_tensor}) and that scalar is 1
+
+\begin{lstlisting}
+backend:
+	allow variable field type (could have a name?)
+        backend base class with more things implemented for "normal" backends
+	        scalar_value and scalar_tensor = pass
+		raw_check = pass (user can check that input tensors are as expected)
+		increment -> +=
+		mult -> *
+		subscript -> []
+		shape -> .shape
+		str -> str
+		field = float
+\end{lstlisting}
+
+
+clean up documentation. Some good doc sentences...
+
+The string of tensors to be contracted often
+consists of more then two, and so it would be incorrect to assume that a complete and
+valid tensor has been described after every use of the @ operator.  Therefore, it is not
+safe to assume that the use of @ results in something that is a tensor in every way
+(eg, it may not even have a valid shape, due to missing free indices).  By the same token,
+since the = operator in python only means "bind" (as opposed to, say, C++), there is no
+way for the user to indicate when a tensor description is "done".
+(correction, now use \lstinline{__call__()})
+  The dark corner here
+is that the result of several @ operations remembers the names of its contraction indices
+and if that result is bound to a variable, it could be @-ed with more tensors, inadvertently
+using the same letters, leading to unexpected results.  This is probably not a big deal,
+however, because this usage pattern is also unorthodox, since, after binding the result
+of an @ string to a name, that object should itself be subjected to the call operation ()
+referencing the indices of the finished product (with no memory of labels used for internal
+contractions) before being contracted with other tensors.
+
+	\subsection{Questions about using \texttt{opt\_einsum}}
+
+\url{https://joss.theoj.org/papers/10.21105/joss.00753}
+
+Clearly there are advantages to the fact that the authors of \lstinline{opt_einsum} have given much more
+thought to their heuristics, but it is not immediately available for all backends, and the
+fact that my heuristics live above the backend and need to know nothing about the hardware
+to at least make a *good* guess (maybe not the best) still makes it useful.  That said, 
+on further study, we might find that \lstinline{opt_einsum} is just as easily put on top of other backends
+as is my own code (eg, it already works on top of numpy and is default in pytorch).
+If that is the case, and we find it is a hands-down winner over my own heuristic, then we can
+just have evaluate() pass *all* of the arguments directly to \lstinline{opt_einsum}.  This might also
+be left as a user choice.
+
+Update:
+\lstinline{opt_einsum} can now be enabled with the tensorly backend by the use of the following two lines, probably at the top-level:
+
+  \lstinline{tensorly_plugins.use_opt_einsum()}
+
+  \lstinline{qode.math.tensornet.backend_contract_path(True)}
+
+See also:
+
+  \url{https://tensorly.org/stable/modules/generated/tensorly.plugins.use_opt_einsum.html#tensorly.plugins.use_opt_einsum}
+
+  \url{https://optimized-einsum.readthedocs.io/en/stable/install.html#conda}
+
+I'm not a big fan of how this works because, IMO, all decisions about how to contract tensors should
+be as local as possible.  Say, for example, you wanted to merge two codes that had been using different
+backends for the tensors.  It will be a lot more convenient if you don't have to force them to agree on one.
+This is why my tensors carry knowledge of their backends with them, and the only thing that matters when
+two tensors meet is that they are the same (which is presumably the case within any given code domain).
+Now there is this wart, where you insist that all tensors (even those with different backends) are either
+going to use the frontend or the backend contraction path.  Probably this is ok for well over 90% of use
+cases, but I would like to clean it up.  At the same time though, making the \lstinline{backend_contract_path}
+option a feature of a backend is also not really (ie, could carry this option around with the tensors)
+because it is not a feature of the backend, it is a feature of a contraction within the context of a 
+backend.  We certainly do not want to insist that a tensor created with one way of determining the contraction
+path cannot be contracted with a tensor with a different "opinion" on the way of determining the contraction
+path.  At the moment then, this is the least of evils.  At least a user can dynamically switch back and forth.
+
+
+\end{document}

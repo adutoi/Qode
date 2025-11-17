@@ -27,30 +27,6 @@ def backend_contract_path(TrueFalse):
 
 
 
-# We have 4 different types of top-level tensors
-#   contraction_expression
-#   tensor_sum
-#   tensor_network
-#   primitive_tensor
-# All of these are built off of tensor_base.  The latter three are built off of resolved_tensor (which
-# is based on tensor_base) indicating that they are completely well-formed.  contraction_expression
-# behaves like a tensor so long as it is well formed, but it could be incomplete.  The basic problem
-# is that, when connecting a bunch of tensors with @, it is not possible to automatically discern
-# when the string is finished (ie, when all intended target free indices are present).  Only the user can decide
-# when to "close" the string, but we don't want to make the user do this explicitly.  Therefore,
-# we allow this incomplete class, whose *resolution* is a tensor_network (it always resolves to a
-# tensor_network). This is triggered by taking another action on it that is not @ or *.  A tensor_sum
-# can only contain types primitive_tensor and tensor_network.  An attempt to include another
-# tensor_sum will cause it to be expanded out as a single sum (and contraction_expression will 
-# be automatically resolved to tensor_network).  A tensor_network can only contain
-# type primitive_tensor, and including one network (or contraction_expression) into another network causes explicit expansion
-# into a single network.  Taking this together, this means that a tensor_network cannot contain a 
-# tensor_sum.  An attempt to put a tensor_sum into a tensor_network will result in the hierarchy
-# being swapped to a sum of networks.  The reason for this is purely practical.  At the moment,
-# I cannot think of a way of finding the best path to evaluate a network that contains sums.
-
-
-
 # Expected to have a backend and a shape (if requested), and be able to participate in tensor arithmetic.
 # Everything else is implementation specific.
 class tensor_base(object):
@@ -259,19 +235,6 @@ class tensor_sum(resolved_tensor):
         return primitive_tensor(self._backend, raw_result)
 
 
-
-# Barebones theory (written much later after a forensic debug battle).  A tensor_network object contains
-# two fundamental pieces of information (and other incidental info).  One is a list of contractions.
-# Each contraction itself is a list of two-tuples; each two-tuple identifies a tensor and the index
-# of that tensor involved in the contraction.  So if a contraction contains two two-tuples, then 
-# two indices are contracted with one another, but there might be more for unusual contractions.
-# The ordering of the list of contractions is irrelevant, as is the ordering of the list of two-tuples
-# that defines a given contraction. The other piece of information is a list of free indices of the result,
-# which correspond to uncontracted indices of the tensors in the network.  This list is ordered, and each
-# free index is itself a list of two-tuples with the same tensor-index structure as the two-tuples that
-# define a contraction.  In the most usual case, each such list corresponding to a free index will be of
-# length one, but if there is more than one tensor index that corresponds to a single free index it is because
-# those indices are set equal to each other and reduced to a single free index.
 
 class tensor_network(resolved_tensor):
     def __init__(self, backend, scalar, contractions, free_indices):
