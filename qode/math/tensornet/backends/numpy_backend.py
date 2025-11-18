@@ -17,13 +17,15 @@
 #
 import numpy
 
-# Need to place these in an object (a class is an object) because modules cannot be pickled.
-# On a similar note, they need to be in a class and not a class instance because instances
-# that are the same upon pickling may be unpickled as distinct objects, which interferes
-# with checking if two backends are the same (best to used "is" for absolute assurance that
-# they are exactly the same).  That said, since modules are not pickled (referenced by fully
-# qualified path and loaded only once), we can check that two backends are the same using the
-# "is" operator between the class defined here.
+# Need to place these in an object (a class is an object) because modules
+# cannot be pickled.  On a similar note, they need to be in a class and not
+# a class instance because instances that are the same upon pickling may be
+# unpickled as distinct objects, which interferes with checking if two
+# backends are the same (best to used "is" for absolute assurance that they
+# are exactly the same).  That said, since modules are not pickled
+# (referenced by fully qualified path and loaded only once), we can check
+# that two backends are the same using the "is" operator between the class
+# defined here.
 
 class functions(object):
     name = "numpy"

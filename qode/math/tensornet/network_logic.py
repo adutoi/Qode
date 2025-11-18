@@ -362,7 +362,7 @@ class logic(object):    # only used to be lazy about not changing indentation
                     dims_catalog[index] = struct(length=tensor.shape[dim], priors=[(arg,dim)])
                 else:
                     if tensor.shape[dim]==dims_catalog[index].length:
-                        dims_catalog[index].priors += (arg,dim)
+                        dims_catalog[index].priors += [(arg,dim)]
                     else:
                         priors = "\n".join([f"dimension {dim_} of argument {arg_}" for arg_,dim_ in dims_catalog[index].priors])
                         raise ContractionError(f"\ncontraction_expression:  error for identifier \"{index}\" (all enumerations start at 0)\ndimension {dim} of argument {arg} has incompatible length ({tensor.shape[dim]}) for contraction or reduction with dimension(s) of length {dims_catalog[index].length} in:\n{priors}")
