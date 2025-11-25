@@ -213,7 +213,7 @@ More importantly however, this heuristic is separable from the rest of the
 Swapping this out (and providing an interface to any options) would be a developer task,
  as opposed to a user task (such as providing an interface to the backend is a user task), 
  but it should be pretty straightforward to make use of more advanced algorithms as long
- as the storage paradigms for the network information is translatable.
+ as the storage paradigms for the network information is translatable (see Code Stucture).
 For purposes of illustration, however, we will comment that the first steps are 
  obviously correct.
 The first step is obviously correct, however.
@@ -466,8 +466,17 @@ a user might do this if they intended on modifying that primitive for some other
 in use by the tensornet code (you never know ...).  This can now be done by the user with the \texttt{data\_wrap}
 option.
 
+	\subsection{About the Contraction-path Heuristic}
 
-
+In the event that we would want to make a heutistic that can handle embedded sums (or get one from elsewhere),
+ here is what would need to change.
+The \texttt{resolve()} function would no longer invert the hierarch of sums and networks when a sum is to
+ be in a network, but it would simply allow it.
+The old heuristic could then be recovered by parsing the completed network and creating a list of networks,
+ each of which could even have different structure, depending on what was in the sum(s) (and multiple sums
+ would give a tensor-product like structure to the list).  Then, once the networks in the list are evaluated,
+ they are summed.
+However, a better algorithm might have a better idea of the order of operations to do.
 
 		\section{To Do}
 
@@ -493,6 +502,11 @@ without burdening the user with thinking about it and works even if the backend 
 }
 \item{
 see very end of \texttt{opt\_einsum} section below for another to-do item
+}
+\item{
+look into typing (generally) and protocols (for backend interfaces):
+\url{https://typing.python.org/en/latest/index.html}
+\url{https://realpython.com/python-protocol/}
 }
 \end{itemize}
 
@@ -531,6 +545,18 @@ In addition to letting a backend check that a tensor is a valid input for a prim
 we should let the backend check that only compatible indices are being contracted.
 ie, we may want something richer than just "shape" and length (only those of the same
 fragment, or only occ with occ)
+}
+\item{
+Currently, if a user wants to take the norm of a tensor \texttt{T},
+ they have to writes something like \texttt{norm(raw(T))}.
+This is kind of ugly and inconvenient, but I also do not want to have a bunch of pre-defined tensor
+ functions that are either supported or not.  The point of allowing different backends is that they
+ have different strengths, and that may mean different supported utilities.
+So I want to implement some system where a user can add custom functions to the backend
+ that tensornet knows how to call.  This might be something like using \texttt{\_\_getattr\_\_}
+ on an object of \texttt{primitive\_tensor\_factory} class.
+Or maybe users should just wrap their utilities, like:
+\texttt{norm = lambda T: numpy.linalg.norm(raw(T))}
 }
 \end{itemize}
 
