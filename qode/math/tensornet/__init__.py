@@ -15,24 +15,11 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
-
 from .base           import evaluate, increment, raw, scalar_value, shape, initialize_timer, print_timings, ContractionError
 from .tensors        import backend_contract_path
 from .tensors        import primitive_tensor as _primitive_tensor
 from .tensors        import tensor_sum as _tensor_sum
 from .backends       import dummy_backend, numpy_backend, tensorly_backend
-
-print("""
-U S I N G   E X P E R I M E N T A L   T E N S O R N E T   C O D E
-U S I N G   E X P E R I M E N T A L   T E N S O R N E T   C O D E
-U S I N G   E X P E R I M E N T A L   T E N S O R N E T   C O D E
-U S I N G   E X P E R I M E N T A L   T E N S O R N E T   C O D E
-U S I N G   E X P E R I M E N T A L   T E N S O R N E T   C O D E
-U S I N G   E X P E R I M E N T A L   T E N S O R N E T   C O D E
-U S I N G   E X P E R I M E N T A L   T E N S O R N E T   C O D E
-U S I N G   E X P E R I M E N T A L   T E N S O R N E T   C O D E
-U S I N G   E X P E R I M E N T A L   T E N S O R N E T   C O D E
-""")
 
 class primitive_tensor_factory(object):
     def __init__(self, backend, data_wrap=lambda d: d, data_unwrap=lambda d: d):

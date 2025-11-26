@@ -194,8 +194,11 @@ print("relative error in check  5:", check(raw(ABCD_p), test))
 # equal to each other.  Also single as well as multiple (not just double)
 # occurances of contraction labels are allowed.  Note that the same index
 # can occur multiply on any given tensor, and that outer products (A shares
-# no indices with others) are allowed.
-ABCD3 = A(q,0) @ B(1,p) * 3 * C(p,1) @ D(p,p)
+# no indices with others) are allowed.  Finally, if a scalar will be buried
+# in the middle of a contraction string, it is best to use @ on both sides
+# or else you have to remember to use * only for the first one because of
+# the order in which python operators bind.
+ABCD3 = A(q,0) @ B(1,p) @ 3 @ C(p,1) @ D(p,p)
 test = 3 * einsum("qr,sp,ps,pp->rs", A_, B_, C_, D_)
 print("relative error in check  6:", check(raw(ABCD3), test))
 

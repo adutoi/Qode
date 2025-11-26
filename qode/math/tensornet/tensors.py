@@ -141,7 +141,10 @@ class contraction_expression(tensor_base):
         try:
             new_tensors_indices = self._tensors_indices + other._tensors_indices
         except:
-            raise TypeError(f"@ not defined between contraction_expression and {type(other)}.\nUse * or *= for multiplication by a scalar.")
+            try:    # assume it is a scalar
+                return other * self    # not happy with the structure of this competing return statement, but it works for now
+            except:
+                raise TypeError(f"@ not defined between contraction_expression and {type(other)}.")
         return contraction_expression(self._backend, new_tensors_indices, self._scalar)
     def _resolve(self):
         return network_logic.logic.resolve(self._scalar, self._tensors_indices, tensor_network)
