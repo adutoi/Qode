@@ -17,7 +17,7 @@
 #
 from textwrap import indent
 from qode.util import struct
-from .base import resolve, evaluate, raw, scalar_value, increment, resolve_ellipsis
+from .base import resolve, evaluate, raw, scalar_value, increment, subscript, resolve_ellipsis
 from . import network_logic
 
 _backend_contract_path = False    # if True, let backend handle finding the optimal contraction path upon evaluate() call
@@ -97,7 +97,7 @@ class tensor_base(object):
     #
     def __getitem__(self, indices):    # called only by contraction_expression (overridden by resolved_tensor types)
         indices = resolve_ellipsis(indices, len(self._shape))
-        return resolve(self)[indices]
+        return subscript(resolve(self), indices)
     def __setitem__(self, indices):
         raise TypeError("slices and/or elements of tensornet tensors are not assignable")
     #
@@ -170,7 +170,7 @@ class primitive_tensor(resolved_tensor):
     def __mul__(self, x):
         new = primitive_tensor(self._backend, self._raw_tensor, _scalar=x*self._scalar)
         return new
-    def __getitem__(self, indices):
+    def _subscript(self, indices):
         indexed_tensor = self._backend.subscript(self._raw_tensor, indices)
         if any(isinstance(index,slice) for index in indices):
             new = primitive_tensor(self._backend, indexed_tensor, _scalar=self._scalar)
@@ -214,7 +214,7 @@ class tensor_sum(resolved_tensor):
                 self._terms += subterms    # no copies because never modified in-place
     def __mul__(self, x):
         return tensor_sum(self._backend, terms=[x*term for term in self._terms])    # changes scalar prefactors, not raw tensors.  forces copies
-    def __getitem__(self, indices):
+    def _subscript(self, indices):
         indexed_tensors = [term[indices] for term in self._terms]
         if any(isinstance(index,slice) for index in indices):
             new = tensor_sum(self._backend, terms=indexed_tensors)
@@ -252,7 +252,7 @@ class tensor_network(resolved_tensor):
         new = tensor_network(self._backend, self._scalar, self._contractions, self._free_indices)
         new._scalar *= x
         return new
-    def __getitem__(self, indices):
+    def _subscript(self, indices):
         return network_logic.logic.subscript(self, indices, tensor_network)
     def _evaluate(self):
         return network_logic.logic.evaluate(self, tensor_network, primitive_tensor, _backend_contract_path)

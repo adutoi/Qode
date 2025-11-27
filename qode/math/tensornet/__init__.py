@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with Qode.  If not, see <http://www.gnu.org/licenses/>.
 #
-from .base           import evaluate, increment, raw, scalar_value, shape, initialize_timer, print_timings, ContractionError
+from .base           import shape, resolve, evaluate, raw, scalar_value, increment, subscript, initialize_timer, print_timings, ContractionError
 from .tensors        import backend_contract_path
 from .tensors        import primitive_tensor as _primitive_tensor
 from .tensors        import tensor_sum as _tensor_sum

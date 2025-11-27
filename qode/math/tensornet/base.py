@@ -40,6 +40,9 @@ def scalar_value(tensor):
 def increment(raw_result, tensor):    # for incrementing raw tensors of the same shape (for efficiency)
     return tensor._increment(raw_result)
 
+def subscript(tensor, indices):
+    return tensor._subscript(indices)
+
 def resolve_ellipsis(indices, n_dim):
     ellipsis_resolution = [slice(None)] * (n_dim - len(indices) + 1)
     new_indices = []
