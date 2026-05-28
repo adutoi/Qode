@@ -1,4 +1,4 @@
-#    (C) Copyright 2019 Anthony D. Dutoi
+#    (C) Copyright 2026 Anthony D. Dutoi and Marco Bauer
 # 
 #    This file is part of Qode.
 # 
