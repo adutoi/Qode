@@ -185,6 +185,15 @@ class AO_integrals(object):
         elif "vlx" in backend:
             from .external_engines import vlx_ints
             integrals_engine = vlx_ints
+        elif "hdf5" in backend:
+            from .external_engines import hdf5_ints
+            integrals_engine = hdf5_ints
+        elif "json" in backend:
+            from .external_engines import json_ints
+            integrals_engine = json_ints
+        elif "lible" in backend:
+            from .external_engines import pybind_lible_ints
+            integrals_engine = pybind_lible_ints
         else:
             raise NotImplementedError(f"backend {backend} cannot be mapped to integral engine")
         self.fragments = fragments
@@ -214,6 +223,7 @@ class AO_integrals(object):
                     else:
                         if frag.basis.AOcode!=basis:  raise AssertionError("right now, all fragments must have the same basis")	# see also, warning at top of file
                     geometry += AO_integrals._add_fragment(frag.atoms, ghost=(i!=j))
+                    print(geometry)
                 S, T, Ui, V, _ = integrals_engine.AO_ints(geometry, basis, NucPotentialOnly=True, printout=printout)
                 U += [Ui]
 
