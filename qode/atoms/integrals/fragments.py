@@ -240,10 +240,10 @@ class AO_integrals(object):
     @staticmethod
     def _add_fragment(atoms, ghost=False):
         ghost = "@" if ghost else ""
+        fragment = ""    # must be initialized outside of the loop, otherwise only the last atom of a fragment survives
         for atom in atoms:
             element, (x,y,z) = atom  #("element position")    # atom is a struct
-            fragment = ""
-            fragment += "{:s} {:.16f} {:.16f} {:.16f}\n".format(ghost+element, x, y, z)
+            fragment +="{:s} {:.16f} {:.16f} {:.16f}\n".format(ghost+element, x, y, z)
         return fragment
     @staticmethod
     def _block_rule(ints_type, all_integrals, sort_keys):
