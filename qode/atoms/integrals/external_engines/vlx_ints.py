@@ -22,13 +22,7 @@ import timeit
 
 def brabraketket(braketbraket, printout=print):
     start_time = timeit.default_timer()
-    n_orb = braketbraket.shape[0]
-    V = np.zeros((n_orb, n_orb, n_orb, n_orb))
-    for p in range(n_orb):
-        for q in range(n_orb):
-            for r in range(n_orb):
-                for s in range(n_orb):
-                    V[p,q,r,s] = braketbraket[p,r,q,s]
+    V = np.array(np.transpose(braketbraket, (0, 2, 1, 3)), dtype=float, order="C")    # V[p,q,r,s] = braketbraket[p,r,q,s]
     elapsed = timeit.default_timer() - start_time
     printout('elapsed time (brabraketket function) =', elapsed)
     return V

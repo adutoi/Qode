@@ -1,16 +1,9 @@
 import numpy
-import psi4
 import timeit
 
 def brabraketket(braketbraket, printout=print):
     start_time = timeit.default_timer()
-    n_orb = braketbraket.shape[0]
-    V = numpy.zeros((n_orb, n_orb, n_orb, n_orb))
-    for p in range(n_orb):
-        for q in range(n_orb):
-            for r in range(n_orb):
-                for s in range(n_orb):
-                    V[p,q,r,s] = braketbraket[p,r,q,s]
+    V = numpy.array(numpy.transpose(braketbraket, (0, 2, 1, 3)), dtype=float, order="C")    # V[p,q,r,s] = braketbraket[p,r,q,s]
     elapsed = timeit.default_timer() - start_time
     printout('elapsed time (brabraketket function) =', elapsed)
     return V
@@ -22,6 +15,9 @@ class supplementary(object):
 n_calls = 0
 
 def AO_ints(geometry, basis, max_mem=1e9, NucPotentialOnly=False, printout=print):
+    # imported here, since other engines use brabraketket from this module and "import psi4"
+    # sets the number of OpenMP/MKL threads of the whole process to 1
+    import psi4
     start_time = timeit.default_timer()
     global n_calls
     n_calls += 1
