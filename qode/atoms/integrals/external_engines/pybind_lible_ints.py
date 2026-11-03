@@ -17,6 +17,7 @@
 #
 
 import timeit
+import numpy
 from pathlib import Path
 import sys
 
@@ -74,7 +75,7 @@ def _geom_to_key(geometry):
     return "_".join(tags)
 
 
-def AO_ints(geometry, basis, max_mem=1e9, NucPotentialOnly=False, printout=print):
+def AO_ints(geometry, basis, max_mem=1e9, NucPotentialOnly=False, printout=print, with_eri=True):
     """
     Compute AO integrals by calling lible directly via the pylible_ints
     pybind11 module.  Ghost atoms (symbol prefixed with "@") contribute
@@ -118,6 +119,11 @@ def AO_ints(geometry, basis, max_mem=1e9, NucPotentialOnly=False, printout=print
         S = None
         T = None
         V = None
+    elif not with_eri:
+        # one-electron integrals only (the two-electron integrals come from RI_factors)
+        S, T = pli.overlap_and_kinetic(atoms, basis)
+        U = pli.nuclear_attraction(atoms, basis)
+        V = None
     else:
         S, T, U, ERI = pli.ao_integrals(atoms, basis)
 
@@ -131,3 +137,58 @@ def AO_ints(geometry, basis, max_mem=1e9, NucPotentialOnly=False, printout=print
     printout("elapsed time (pylible_ints AO integrals) =", elapsed)
 
     return S, T, U, V, supplementary(key)
+
+
+def lible_basis_name(name, aux=False):
+    """
+    The lible name of a basis set as hummr resolves it (hummr::ints::translateBasis2Lible): the lower-case name if
+    lible knows it, otherwise hummr's correspondence table (e.g. def2-JK -> def2-universal-jkfit); None if neither.
+    """
+    known = set(pli.available_basis_sets()) | set(pli.available_aux_basis_sets())
+    if name.lower() in known:
+        return name.lower()
+    table = {"DEF2-SV(P)": "def2-sv(p)", "DEF2-SVPD": "def2-svpd", "DEF2-TZVPP": "def2-tzvpp",
+             "DEF2-TZVPD": "def2-tzvpd", "DEF2-TZVPPD": "def2-tzvppd", "DEF2-QZVPP": "def2-qzvpp",
+             "DEF2-QZVPD": "def2-qzvppd", "DEF2-QZVPPD": "def2-qzvppd", "DEF2-JK": "def2-universal-jkfit",
+             "DEF2-SVP-C": "def2-svp-rifit", "DEF2-SVPD-C": "def2-svpd-rifit", "DEF2-TZVP-C": "def2-tzvp-rifit",
+             "DEF2-TZVPD-C": "def2-tzvpd-rifit", "DEF2-QZVP-C": "def2-qzvp-rifit", "DEF2-QZVPP-C": "def2-qzvpp-rifit",
+             "DEF2-QZVPPD-C": "def2-qzvppd-rifit", "SV": "ahlrichs-vdz", "SVP": "ahlrichs-pvdz"}
+    return table.get(name.upper())
+
+
+def RI_factors(geometry, basis, aux_basis, C, max_batch_bytes=5e8, metric_thresh=1e-10, printout=print):
+    """
+    The RI (density-fitting) factors of the two-electron integrals of the orbitals C (nao x n, AO order of the
+    geometry string, as in AO_ints),
+        B[P, p, q] = sum_Q (pq|Q) [J^-1/2]_QP,        (pq|rs) ~ sum_P B[P, p, q] B[P, r, s],
+    with the Coulomb metric J_PQ = (P|Q) of the auxiliary basis aux_basis (eigenvalues below metric_thresh are
+    dropped, i.e. P runs over the kept eigenvectors).  The three-index AO integrals (mu nu|Q) are computed by lible in
+    batches of auxiliary shells of at most about max_batch_bytes and transformed to the orbitals right away, so that the
+    AO three-index tensor (nao^2 naux) is never held; the memory is that of B (naux n^2) twice.
+    Ghost atoms ("@") carry basis and auxiliary functions, but no charge (irrelevant here).
+    """
+    start_time = timeit.default_timer()
+    atoms = _parse_geometry(geometry)
+    engine = pli.RIEngine(atoms, basis, aux_basis)
+    nao, naux, n = engine.num_aos(), engine.num_aux(), C.shape[1]
+    if C.shape[0] != nao:
+        raise ValueError(f"RI_factors: {C.shape[0]} AO rows of C, but {nao} AOs of {basis} for the geometry")
+    C = numpy.ascontiguousarray(C, dtype=float)
+    L = numpy.empty((naux, n, n))
+    n_shells, first = engine.num_aux_shells(), 0
+    while first < n_shells:
+        last, funcs = first, []
+        while last < n_shells and (not funcs or 8.0 * (len(funcs) + len(engine.aux_shell_functions(last))) * nao * nao <= max_batch_bytes):
+            funcs += engine.aux_shell_functions(last)
+            last += 1
+        batch = engine.eri3_batch(first, last)                       # (n_functions, nao, nao)
+        L[funcs] = numpy.matmul(numpy.matmul(C.T, batch), C)         # (pq|Q) of the batch
+        batch = None
+        first = last
+    w, v = numpy.linalg.eigh(engine.eri2())
+    keep = w > metric_thresh
+    Jm = v[:, keep] / numpy.sqrt(w[keep])                            # J^-1/2 restricted to the kept eigenvectors
+    B = (Jm.T @ L.reshape(naux, n * n)).reshape(-1, n, n)
+    printout(f"RI factors ({basis} / {aux_basis}): {nao} AOs, {naux} auxiliary functions ({keep.sum()} kept), "
+             f"{n} orbitals, elapsed time {timeit.default_timer() - start_time:.2f} s", flush=True)
+    return B

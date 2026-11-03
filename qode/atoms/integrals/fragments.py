@@ -178,7 +178,10 @@ class Nuc_repulsion(object):
 
 
 class AO_integrals(object):
-    def __init__(self, fragments, rule_wrappers=None, printout=print, backend="psi4"):
+    def __init__(self, fragments, rule_wrappers=None, printout=print, backend="psi4", two_electron=True):
+        # two_electron=False: S, T and U only (V is not available), e.g. for RI two-electron integrals (lible only)
+        if not two_electron and "lible" not in backend:
+            raise NotImplementedError("AO_integrals without two-electron integrals is implemented for the lible backend")
         if "psi4" in backend:
             from .external_engines import psi4_ints
             integrals_engine = psi4_ints
@@ -200,13 +203,13 @@ class AO_integrals(object):
         frag_ids = keys(self.fragments)
         sort_keys = key_sorter(fragments)
         if rule_wrappers is None:  rule_wrappers = []
-        frag_calcs = dynamic_array([cached, AO_integrals._compute_rule(fragments, sort_keys, integrals_engine, printout)], ranges=[None])	# definitely cache because so expensive and called repeatedly by arrays below ... no rule_wrappers because elements different in structure than those below
+        frag_calcs = dynamic_array([cached, AO_integrals._compute_rule(fragments, sort_keys, integrals_engine, printout, two_electron)], ranges=[None])	# definitely cache because so expensive and called repeatedly by arrays below ... no rule_wrappers because elements different in structure than those below
         self.S   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("S", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids])		# caching not important because just block finder (and each grabbed only once to do fragMO transform)
         self.T   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("T", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids])
         self.U   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("U", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids,frag_ids])
         self.V   = dynamic_array(rule_wrappers + [AO_integrals._block_rule("V", frag_calcs, sort_keys)], ranges=[frag_ids,frag_ids,frag_ids,frag_ids])
     @staticmethod
-    def _compute_rule(fragments, sort_keys, integrals_engine, printout):
+    def _compute_rule(fragments, sort_keys, integrals_engine, printout, two_electron=True):
         def the_integrals(frag_indices):
 
             start_time = timeit.default_timer()
@@ -230,6 +233,9 @@ class AO_integrals(object):
             elapsed = timeit.default_timer() - start_time
             printout('elapsed time (after integrals loops) =', elapsed, flush=True)
 
+            if not two_electron:
+                S, T, _, _, _ = integrals_engine.AO_ints(geometry, basis, printout=printout, with_eri=False)
+                return {"S":block_2(S,subsystem), "T":block_2(T,subsystem), "U":block_last2(U,subsystem)}
             S, T, _, V, _ = integrals_engine.AO_ints(geometry, basis, printout=printout)	# relies on most recent geometry from loop above
             return {"S":block_2(S,subsystem), "T":block_2(T,subsystem), "U":block_last2(U,subsystem), "V":block_4(V,subsystem)}
 
